@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gulosos AI
 
-## Getting Started
+Next.js 16 (App Router, fullstack via Route Handlers) · PostgreSQL · Drizzle ORM · Zod · shadcn/ui.
 
-First, run the development server:
+## Setup
 
 ```bash
+npm install
+cp .env.example .env
+npm run db:up        # sobe o Postgres (docker compose)
+npm run db:migrate   # aplica as migrations
+npm run db:seed      # cria admin@gulosos.ai / admin12345
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Estrutura
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `lib/env.ts` — único ponto de acesso às variáveis de ambiente, validadas com Zod no boot.
+- `db/` — schema Drizzle, conexão, migrations e seed.
+- `lib/auth/` — hash de senha (scrypt), sessões em banco (cookie httpOnly) e DAL.
+- `app/api/auth/*` — Route Handlers de login e logout.
+- `proxy.ts` — redirecionamento otimista; a validação real é feita no DAL.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Após alterar `db/schema.ts`: `npm run db:generate && npm run db:migrate`.
 
-## Learn More
+## DevBrain
 
-To learn more about Next.js, take a look at the following resources:
+Central de contexto para agentes de IA. Git é a fonte da verdade dos documentos; o PostgreSQL guarda apenas metadados e estado operacional.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Scripts: `npm test` (Vitest), `npm run typecheck`, `npm run lint`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### MCP
 
-## Deploy on Vercel
+O DevBrain expõe um servidor MCP (Streamable HTTP) em `${APP_URL}/api/mcp`, autenticado por token Bearer.
+Crie tokens e copie os comandos de instalação (Claude Code e Codex) na página `/mcp`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `APP_URL` — URL pública do app, com prefixo se houver (ex.: `https://vps.kayky.dev.br/ai`).
+- Cada token pertence a um projeto, tem escopos (`context:read`, `changes:propose`), expiração opcional e pode ser revogado. Só o hash é guardado.
+- Ferramentas: `get_project`, `list_context_files`, `list_skills`, `get_skill`, `propose_change`, `get_change`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Skills
+
+Skills universais (sem projeto) valem para todos os projetos automaticamente; as específicas pertencem a um projeto. Ao criar uma skill dá para importar um `SKILL.md`: nome e descrição vêm do frontmatter e o arquivo é armazenado (`skills.content`) como cópia de trabalho, lida pelos agentes via `get_skill`. O destino de publicação no Git é `devbrain/global/skills/<slug>/` ou `<caminho-do-projeto>/skills/<slug>/`.
+
+Roadmap por etapas: 1) fundação e projetos ✅ · 2) integração GitHub · 3) editor Markdown e skills · 4) sincronização e PRs · 5) API para agentes.
