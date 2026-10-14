@@ -1,0 +1,1 @@
+ALTER TABLE "agent_tokens" ADD COLUMN "token_prefix" text NOT NULL;
