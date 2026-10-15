@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash, randomBytes } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { cookies } from "next/headers";
 
 import { db } from "@/db";
@@ -58,4 +58,12 @@ export async function destroySession() {
 
   if (token) await db.delete(sessions).where(eq(sessions.id, hashToken(token)));
   cookieStore.delete(env.SESSION_COOKIE_NAME);
+}
+
+/** Encerra todas as sessões do usuário, exceto a atual. */
+export async function destroyOtherSessions(userId: string) {
+  const token = (await cookies()).get(env.SESSION_COOKIE_NAME)?.value;
+  const keep = token ? ne(sessions.id, hashToken(token)) : undefined;
+
+  await db.delete(sessions).where(and(eq(sessions.userId, userId), keep));
 }

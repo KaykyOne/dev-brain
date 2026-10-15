@@ -2,21 +2,35 @@
 
 Next.js 16 (App Router, fullstack via Route Handlers) · PostgreSQL · Drizzle ORM · Zod · shadcn/ui.
 
-## Setup
+## Rodando com Docker (tudo junto)
+
+```bash
+cp .env.example .env     # opcional: ajuste APP_URL, ADMIN_* etc.
+npm run up               # builda e sobe Postgres + migrations + app em http://localhost:3000
+npm run logs             # logs do app
+npm run down             # derruba (o volume do banco é mantido)
+```
+
+Os serviços: `db` (Postgres), `migrate` (aplica as migrations e encerra) e `app` (Next.js em modo standalone,
+só sobe depois das migrations). Dentro do Docker o `DATABASE_URL` aponta para o serviço `db`, ignorando o do `.env`.
+Variáveis do compose: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` e `APP_PORT`.
+
+## Desenvolvimento local (sem Docker no app)
 
 ```bash
 npm install
 cp .env.example .env
-npm run db:up        # sobe o Postgres (docker compose)
+npm run db:up        # sobe só o Postgres
 npm run db:migrate   # aplica as migrations
-npm run db:seed      # cria admin@gulosos.ai / admin12345
 npm run dev
 ```
+
+Na inicialização o app garante o usuário único (`ADMIN_EMAIL`): se não existir, é criado com `ADMIN_INITIAL_PASSWORD` (padrão `Senha123?`); se existir, nada é alterado. Troque a senha em **Perfil** após o primeiro acesso.
 
 ## Estrutura
 
 - `lib/env.ts` — único ponto de acesso às variáveis de ambiente, validadas com Zod no boot.
-- `db/` — schema Drizzle, conexão, migrations e seed.
+- `db/` — schema Drizzle, conexão, migrations.
 - `lib/auth/` — hash de senha (scrypt), sessões em banco (cookie httpOnly) e DAL.
 - `app/api/auth/*` — Route Handlers de login e logout.
 - `proxy.ts` — redirecionamento otimista; a validação real é feita no DAL.

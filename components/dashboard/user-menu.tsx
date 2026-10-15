@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronsUpDownIcon, LogOutIcon } from "lucide-react";
+import { ChevronsUpDownIcon, LogOutIcon, UserIcon } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -58,6 +59,10 @@ export function UserMenu({ user }: UserMenuProps) {
               <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            <DropdownMenuItem render={<Link href="/profile" />}>
+              <UserIcon />
+              Perfil
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={logout}>
               <LogOutIcon />
               Sair

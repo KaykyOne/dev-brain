@@ -8,6 +8,11 @@ const envSchema = z.object({
     .url()
     .default("http://localhost:3000")
     .transform((url) => url.replace(/\/+$/, "")),
+  // Usuário único criado na inicialização, se ainda não existir. A senha só vale para a criação:
+  // troque-a no perfil após o primeiro acesso.
+  ADMIN_EMAIL: z.email().default("kaykyzioti@gmail.com"),
+  ADMIN_NAME: z.string().min(1).default("Kayky Zioti"),
+  ADMIN_INITIAL_PASSWORD: z.string().min(8).default("Senha123?"),
   SESSION_COOKIE_NAME: z.string().min(1).default("session"),
   SESSION_MAX_AGE_DAYS: z.coerce.number().int().positive().default(7),
 });

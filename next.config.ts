@@ -4,7 +4,8 @@ import type { NextConfig } from "next";
 import "./lib/env";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Gera .next/standalone: servidor mínimo usado na imagem Docker.
+  output: "standalone",
   experimental: {
     agentFeedback: true,
   },

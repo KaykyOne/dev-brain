@@ -1,0 +1,32 @@
+FROM node:24-alpine AS base
+WORKDIR /app
+
+# Dependências (todas, incluindo as de desenvolvimento, usadas no build e nas migrations).
+FROM base AS deps
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Build da aplicação. DATABASE_URL só existe para a validação de env no build;
+# nenhuma conexão é feita e o valor não vai para a imagem final.
+FROM deps AS builder
+COPY . .
+ARG DATABASE_URL=postgresql://build:build@localhost:5432/build
+ENV DATABASE_URL=$DATABASE_URL NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+# Aplica as migrations (drizzle-kit) e encerra. Não faz parte da imagem de runtime.
+FROM deps AS migrator
+COPY drizzle.config.ts ./
+COPY db ./db
+CMD ["npx", "drizzle-kit", "migrate"]
+
+# Runtime: apenas o necessário, sem root.
+FROM base AS runner
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+USER nextjs
+EXPOSE 3000
+CMD ["node", "server.js"]

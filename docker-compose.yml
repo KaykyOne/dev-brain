@@ -3,18 +3,53 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: gulosos
-      POSTGRES_PASSWORD: gulosos
-      POSTGRES_DB: gulosos
+      POSTGRES_USER: ${POSTGRES_USER:-gulosos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gulosos}
+      POSTGRES_DB: ${POSTGRES_DB:-gulosos}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gulosos -d gulosos"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # Aplica as migrations antes da aplicação subir e encerra.
+  migrate:
+    build:
+      context: .
+      target: migrator
+    environment:
+      DATABASE_URL: &database-url postgresql://${POSTGRES_USER:-gulosos}:${POSTGRES_PASSWORD:-gulosos}@db:5432/${POSTGRES_DB:-gulosos}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Sobrescreve o DATABASE_URL do .env (que aponta para localhost, usado fora do Docker).
+      DATABASE_URL: *database-url
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/login >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
 
 volumes:
   pgdata:
