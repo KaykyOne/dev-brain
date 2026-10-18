@@ -4,42 +4,38 @@ import { BookOpenIcon, GitBranchIcon, KeyRoundIcon, SparklesIcon } from "lucide-
 const fields = [
   {
     title: "Nome",
-    body: "Como o projeto aparece nas listas, no dashboard e nas mensagens. É só um rótulo para você: pode ter espaços e acentos e ser alterado depois sem quebrar nada.",
+    body: "Como o projeto aparece nas listas, no dashboard e nas mensagens. É só um rótulo: pode ter espaços e acentos e ser alterado depois sem quebrar nada. Entra no título do README.md do repositório.",
   },
   {
     title: "Slug",
-    body: "Identificador estável do projeto, em letras minúsculas, números e hífens. Ele vai na URL (/projects/meu-projeto) e é a chave que integrações usam para encontrar o projeto, por isso precisa ser único. É gerado a partir do nome, mas você pode ajustar. Evite mudar depois de conectar agentes.",
+    body: "Identificador estável, em letras minúsculas, números e hífens. Vai na URL (/projects/meu-projeto) e é o nome da pasta do repositório git no servidor, por isso precisa ser único e não muda depois de criado.",
   },
   {
     title: "Descrição",
-    body: "Resumo do que o projeto faz e de quem o usa. Os agentes recebem esse texto pelo MCP (get_project) como primeira orientação, então vale ser objetivo: domínio, stack e o que não deve ser alterado.",
-  },
-  {
-    title: "Caminho no repositório",
-    body: "Pasta do projeto dentro do repositório Git de contexto, relativa à raiz (ex.: devbrain/projects/meu-projeto). É lá que ficam context.md, architecture.md, decisions/, memory/ e skills/. Um mesmo repositório pode guardar vários projetos; este caminho diz qual pasta pertence a qual. Caminhos absolutos ou com “..” são recusados por segurança, para que ninguém leia ou escreva fora da pasta autorizada. É preenchido automaticamente a partir do slug (devbrain/projects/<slug>), seguindo a convenção do DevBrain; edite apenas se o seu repositório usar outra estrutura.",
+    body: "Resumo do que o projeto faz e de quem o usa. Entra no 00-base.md do repositório, que a IA lê sempre; seja objetivo: domínio, stack e o que não deve ser alterado.",
   },
   {
     title: "Branch principal",
-    body: "Branch que representa a versão oficial dos documentos (normalmente main). A sincronização lê dela, e as alterações propostas por agentes chegam como Pull Request contra ela. Nada é gravado direto nessa branch.",
+    body: "Branch inicial do repositório git (normalmente main). O repositório nasce com o commit “feat: estrutura inicial do context” nela.",
   },
   {
     title: "Skills",
-    body: "Skills universais valem para todos os projetos, sem anexar nada; elas aparecem como “já incluídas”. As específicas descrevem procedimentos só deste projeto (ex.: “Criar migration” com o padrão do seu ORM). O campo “Quando usar” é o que o agente lê para decidir se aplica a skill, então escreva como uma instrução de gatilho. Você pode importar vários arquivos .md de uma vez (1 arquivo = 1 skill): nome e descrição são lidos do frontmatter e cada arquivo é armazenado para os agentes lerem pelo MCP (get_skill). Depois ele é publicado no repositório, no caminho do projeto.",
+    body: "Skills universais valem para todos os projetos. As específicas descrevem procedimentos só deste projeto e são lidas pelos agentes via MCP (get_skill). Independente delas, todo repositório já nasce com as regras permanentes em skills/ (proibido-push, ia-externa, arquivos-gerados, commit-do-context...).",
   },
 ];
 
 const flow = [
-  [GitBranchIcon, "Git é a fonte da verdade", "Os documentos (contexto, decisões, memória, SKILL.md) são publicados em Markdown no seu repositório, com histórico, revisão e permissões do GitHub. Enquanto o GitHub não está vinculado, as skills importadas ficam guardadas no DevBrain como cópia de trabalho."],
-  [BookOpenIcon, "O banco guarda só metadados", "Projetos, registro de skills, estado de sincronização, propostas pendentes e tokens ficam no PostgreSQL. É o estado operacional, aquilo que o Git não representa."],
-  [KeyRoundIcon, "Agentes entram pelo MCP", "Claude Code e Codex se conectam com um token que vale para um único projeto e pode ser revogado. Eles consultam contexto e skills e propõem atualizações."],
-  [SparklesIcon, "Nada é publicado sem revisão", "Toda proposta de agente fica pendente. Você revisa o diff, aprova e o DevBrain abre um Pull Request. Agentes nunca escrevem direto na branch principal."],
+  [GitBranchIcon, "Um repositório git por projeto", "Ao criar o projeto, o DevBrain cria um repositório git de contexto no padrão do hub: README com índice “quando carregar”, 00-base.md, skills/, tasks/, notas/, templates-pr/ e raiz/ (AGENTS.md, CLAUDE.md e .claude/settings.json para copiar para a raiz do projeto de código). Ele vive no servidor, sem remoto: dá para clonar do volume e publicar onde quiser."],
+  [BookOpenIcon, "O banco guarda só metadados", "Projetos, registro de skills, propostas pendentes, tokens e atividade ficam no PostgreSQL. O conteúdo do contexto fica no git, com histórico completo."],
+  [KeyRoundIcon, "Agentes entram pelo MCP", "Um token de projeto lê e grava o repositório dele (cada gravação é um commit local). Um token de conta (hub) lista e cria projetos: o agente chama create_project e já recebe o repositório pronto e o token dele."],
+  [SparklesIcon, "Nunca há push", "O DevBrain não publica nada: não há remoto configurado e as skills permanentes proíbem push. Remover um projeto move o repositório para .trash/, sem apagar o histórico."],
 ] as const;
 
 export function ProjectGuide() {
   return (
     <aside className="space-y-8 lg:sticky lg:top-6 lg:self-start">
       <section className="space-y-2">
-        <h2 className="text-lg font-semibold tracking-tight">Como o DevBrain funciona</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Como o hub funciona</h2>
         <Accordion multiple defaultValue={[flow[0][1]]}>
           {flow.map(([Icon, title, body]) => (
             <AccordionItem key={title} value={title}>

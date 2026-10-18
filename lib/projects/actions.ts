@@ -4,15 +4,17 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { projects, skills } from "@/db/schema";
+import { projects } from "@/db/schema";
 import { logActivity } from "@/lib/activity";
 import { fail, type ActionResult } from "@/lib/action-result";
+import { contextRepos } from "@/lib/context-repo";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { normalizeRelativePath } from "@/lib/security/paths";
-import { findSecrets } from "@/lib/security/secrets";
-import { slugify } from "@/lib/slug";
+import { checkSkillContent } from "@/lib/skills/content";
 import { createProjectSchema, projectSchema } from "@/lib/validations/project";
+
+import { createProjectWithRepo } from "./create";
 
 const SLUG_TAKEN = fail("Dados inválidos", { slug: ["Este slug já está em uso"] });
 
@@ -32,51 +34,15 @@ export async function createProject(input: unknown): Promise<ActionResult<{ slug
   const parsed = createProjectSchema.safeParse(input);
   if (!parsed.success) return fail("Dados inválidos", z.flattenError(parsed.error).fieldErrors);
 
-  const { skills: projectSkills, repositoryPath, ...values } = parsed.data;
+  const { skills: projectSkills, name, slug, description, defaultBranch } = parsed.data;
+  const values = { name, slug, description, defaultBranch };
 
   for (const skill of projectSkills) {
-    const secrets = findSecrets(skill.content);
-    if (secrets.length > 0) {
-      return fail("Dados inválidos", { skills: [`“${skill.name}” parece conter segredos (${secrets.join(", ")})`] });
-    }
+    const checked = checkSkillContent(skill.content);
+    if (!checked.ok) return fail("Dados inválidos", { skills: [`“${skill.name}” ${checked.message}`] });
   }
 
-  try {
-    // Projeto e skills são criados juntos: ou tudo entra, ou nada.
-    const project = await db.transaction(async (tx) => {
-      const [created] = await tx
-        .insert(projects)
-        .values({ ...values, repositoryPath: normalizeRelativePath(repositoryPath), ownerId: user.id })
-        .returning({ id: projects.id, slug: projects.slug });
-
-      if (projectSkills.length > 0) {
-        await tx.insert(skills).values(
-          projectSkills.map((skill) => ({
-            name: skill.name,
-            description: skill.description,
-            content: skill.content.trim() ? skill.content : null,
-            slug: slugify(skill.name),
-            projectId: created.id,
-            ownerId: user.id,
-          })),
-        );
-      }
-
-      return created;
-    });
-
-    await logActivity({
-      action: "project.created",
-      actorId: user.id,
-      projectId: project.id,
-      metadata: { name: values.name, skills: projectSkills.length },
-    });
-
-    return { ok: true, data: { slug: project.slug } };
-  } catch (error) {
-    if (isUniqueViolation(error)) return SLUG_TAKEN;
-    throw error;
-  }
+  return createProjectWithRepo({ ownerId: user.id, values, skills: projectSkills });
 }
 
 export async function updateProject(id: string, input: unknown): Promise<ActionResult<{ slug: string }>> {
@@ -87,7 +53,8 @@ export async function updateProject(id: string, input: unknown): Promise<ActionR
   try {
     const [project] = await db
       .update(projects)
-      .set(parsed.values)
+      // O slug nomeia o repositório git do projeto: não muda depois de criado.
+      .set({ ...parsed.values, slug: undefined })
       .where(and(eq(projects.id, id), eq(projects.ownerId, user.id)))
       .returning({ id: projects.id, slug: projects.slug });
 
@@ -113,9 +80,12 @@ export async function deleteProject(id: string): Promise<ActionResult> {
   const [project] = await db
     .delete(projects)
     .where(and(eq(projects.id, id), eq(projects.ownerId, user.id)))
-    .returning({ name: projects.name });
+    .returning({ name: projects.name, slug: projects.slug });
 
   if (!project) return fail("Projeto não encontrado");
+
+  // O histórico git é preservado em .trash/ do volume de repositórios.
+  await contextRepos.archive(project.slug).catch((error) => console.error("Falha ao arquivar o repositório", error));
 
   await logActivity({ action: "project.deleted", actorId: user.id, metadata: { name: project.name } });
 

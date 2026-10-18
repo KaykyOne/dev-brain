@@ -16,7 +16,7 @@ export default async function NewProjectPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Novo projeto</h1>
         <p className="text-sm text-muted-foreground">
-          O repositório GitHub é vinculado depois, nas configurações do projeto.
+          Cria o projeto e o seu repositório git de contexto, já no padrão do hub.
         </p>
       </div>
       <div className="grid gap-10 lg:grid-cols-[minmax(0,36rem)_minmax(0,1fr)]">

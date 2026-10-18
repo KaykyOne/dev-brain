@@ -1,14 +1,13 @@
-import { ActivityIcon, FileTextIcon, FolderGitIcon, GitPullRequestIcon, SparklesIcon } from "lucide-react";
+import { ActivityIcon, FileTextIcon, FolderGitIcon, GitCommitHorizontalIcon, GitPullRequestIcon, SparklesIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/shared/empty-state";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ACTIVITY_LABELS, type ActivityAction } from "@/lib/activity";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { getDashboardData } from "@/lib/dashboard";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, shortSha } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -19,7 +18,7 @@ export default async function DashboardPage() {
 
   const stats = [
     { label: "Projetos", value: data.projects, icon: FolderGitIcon },
-    { label: "Contextos", value: data.contexts, icon: FileTextIcon },
+    { label: "Arquivos de contexto", value: data.contexts, icon: FileTextIcon },
     { label: "Skills", value: data.skills, icon: SparklesIcon },
     { label: "Alterações pendentes", value: data.pendingChanges, icon: GitPullRequestIcon },
   ];
@@ -28,7 +27,7 @@ export default async function DashboardPage() {
     <>
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Olá, {user.name.split(" ")[0]}</h1>
-        <p className="text-sm text-muted-foreground">Visão geral dos contextos dos seus agentes.</p>
+        <p className="text-sm text-muted-foreground">Hub de repositórios de contexto dos seus projetos.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -47,25 +46,23 @@ export default async function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Últimas sincronizações</CardTitle>
-            <CardDescription>Resultado das sincronizações com o GitHub.</CardDescription>
+            <CardTitle>Últimos commits</CardTitle>
+            <CardDescription>Histórico dos repositórios de contexto.</CardDescription>
           </CardHeader>
           <CardContent>
-            {data.recentSyncs.length === 0 ? (
-              <EmptyState icon={GitPullRequestIcon} title="Nenhuma sincronização ainda" />
+            {data.recentCommits.length === 0 ? (
+              <EmptyState icon={GitCommitHorizontalIcon} title="Nenhum commit ainda" />
             ) : (
               <ul className="divide-y">
-                {data.recentSyncs.map((sync) => (
-                  <li key={sync.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                    <Link href={`/projects/${sync.projectSlug}`} className="truncate font-medium hover:underline">
-                      {sync.projectName}
-                    </Link>
-                    <span className="flex shrink-0 items-center gap-2">
-                      <Badge variant={sync.status === "success" ? "secondary" : "destructive"}>
-                        {sync.status === "success" ? "Sucesso" : "Falha"}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">{formatDateTime(sync.createdAt)}</span>
+                {data.recentCommits.map((commit) => (
+                  <li key={`${commit.project.slug}-${commit.sha}`} className="flex items-center justify-between gap-3 py-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="block truncate">{commit.subject}</span>
+                      <Link href={`/projects/${commit.project.slug}`} className="text-xs text-muted-foreground hover:underline">
+                        {commit.project.name} · {shortSha(commit.sha)}
+                      </Link>
                     </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{formatDateTime(commit.date)}</span>
                   </li>
                 ))}
               </ul>

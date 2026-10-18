@@ -6,7 +6,8 @@ const dateTime = new Intl.DateTimeFormat("pt-BR", {
   timeZone: TIME_ZONE,
 });
 
-const date = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeZone: TIME_ZONE });
+/** Aceita `Date` ou data ISO (ex.: a data de um commit vinda do git). */
+export const formatDateTime = (value: Date | string) => dateTime.format(new Date(value));
 
-export const formatDateTime = (value: Date) => dateTime.format(value);
-export const formatDate = (value: Date) => date.format(value);
+/** Hash curto de um commit, como o git exibe. */
+export const shortSha = (sha: string) => sha.slice(0, 7);

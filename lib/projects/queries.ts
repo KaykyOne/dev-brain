@@ -4,7 +4,7 @@ import { and, count, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
 import { db } from "@/db";
-import { changeProposals, contextFiles, projects, syncLogs } from "@/db/schema";
+import { changeProposals, projects } from "@/db/schema";
 
 export function listProjects(ownerId: string) {
   return db.select().from(projects).where(eq(projects.ownerId, ownerId)).orderBy(desc(projects.updatedAt));
@@ -25,8 +25,7 @@ export async function getProjectBySlug(ownerId: string, slug: string) {
 export async function getProjectDetail(ownerId: string, slug: string) {
   const project = await getProjectBySlug(ownerId, slug);
 
-  const [files, proposals, [{ pending }], [lastSync]] = await Promise.all([
-    db.select().from(contextFiles).where(eq(contextFiles.projectId, project.id)).orderBy(contextFiles.path),
+  const [proposals, [{ pending }]] = await Promise.all([
     db
       .select()
       .from(changeProposals)
@@ -37,13 +36,7 @@ export async function getProjectDetail(ownerId: string, slug: string) {
       .select({ pending: count() })
       .from(changeProposals)
       .where(and(eq(changeProposals.projectId, project.id), eq(changeProposals.status, "pending"))),
-    db
-      .select()
-      .from(syncLogs)
-      .where(eq(syncLogs.projectId, project.id))
-      .orderBy(desc(syncLogs.createdAt))
-      .limit(1),
   ]);
 
-  return { project, files, proposals, pendingCount: pending, lastSync: lastSync ?? null };
+  return { project, proposals, pendingCount: pending };
 }

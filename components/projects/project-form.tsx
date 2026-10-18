@@ -24,8 +24,6 @@ import { MarkdownImportButton } from "@/components/skills/markdown-import-button
 import { Badge } from "@/components/ui/badge";
 import { createProjectSchema, type CreateProjectInput, type ProjectInput } from "@/lib/validations/project";
 
-const DEFAULT_PATH_ROOT = "devbrain/projects";
-
 type ProjectFormProps = {
   /** Quando informado, o formulário edita o projeto; caso contrário, cria um novo. */
   project?: { id: string } & ProjectInput;
@@ -76,12 +74,6 @@ export function ProjectForm({ project, universalSkills = [] }: ProjectFormProps)
   const nameField = register("name");
   const slugField = register("slug");
 
-  /** Sugere o caminho no repositório a partir do slug, enquanto não for editado manualmente. */
-  function suggestPath(slug: string) {
-    if (project || dirtyFields.repositoryPath) return;
-    setValue("repositoryPath", slug ? `${DEFAULT_PATH_ROOT}/${slug}` : "");
-  }
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="max-w-xl">
       <FieldGroup>
@@ -96,7 +88,6 @@ export function ProjectForm({ project, universalSkills = [] }: ProjectFormProps)
               if (!project && !dirtyFields.slug) {
                 const slug = slugify(event.target.value);
                 setValue("slug", slug, { shouldValidate: true });
-                suggestPath(slug);
               }
             }}
           />
@@ -108,13 +99,14 @@ export function ProjectForm({ project, universalSkills = [] }: ProjectFormProps)
           <Input
             id="slug"
             aria-invalid={!!errors.slug}
+            readOnly={!!project}
             {...slugField}
-            onChange={(event) => {
-              void slugField.onChange(event);
-              suggestPath(event.target.value.trim());
-            }}
           />
-          <FieldDescription>Identificador único usado na URL e nas integrações.</FieldDescription>
+          <FieldDescription>
+            {project
+              ? "O slug nomeia o repositório git do projeto e não pode ser alterado."
+              : "Identificador único usado na URL, nas integrações e como nome do repositório git."}
+          </FieldDescription>
           <FieldError errors={[errors.slug]} />
         </Field>
 
@@ -122,20 +114,6 @@ export function ProjectForm({ project, universalSkills = [] }: ProjectFormProps)
           <FieldLabel htmlFor="description">Descrição</FieldLabel>
           <Textarea id="description" rows={3} aria-invalid={!!errors.description} {...register("description")} />
           <FieldError errors={[errors.description]} />
-        </Field>
-
-        <Field data-invalid={!!errors.repositoryPath}>
-          <FieldLabel htmlFor="repositoryPath">Caminho no repositório</FieldLabel>
-          <Input
-            id="repositoryPath"
-            placeholder={`${DEFAULT_PATH_ROOT}/meu-projeto`}
-            aria-invalid={!!errors.repositoryPath}
-            {...register("repositoryPath")}
-          />
-          <FieldDescription>
-            Preenchido a partir do slug; edite se o seu repositório usar outra pasta.
-          </FieldDescription>
-          <FieldError errors={[errors.repositoryPath]} />
         </Field>
 
         <Field data-invalid={!!errors.defaultBranch}>
