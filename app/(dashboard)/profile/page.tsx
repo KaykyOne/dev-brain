@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ChangePasswordForm } from "@/components/profile/change-password-form";
+import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/dal";
 
@@ -11,10 +12,7 @@ export default async function ProfilePage() {
 
   return (
     <>
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Perfil</h1>
-        <p className="text-sm text-muted-foreground">Dados da conta e segurança.</p>
-      </div>
+      <PageHeader title={<>Perfil</>} description={<>Dados da conta e segurança.</>} />
 
       <Card>
         <CardHeader>

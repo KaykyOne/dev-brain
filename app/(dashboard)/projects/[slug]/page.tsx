@@ -51,13 +51,16 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
       </div>
 
       <Tabs defaultValue="overview">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="overview">Visão geral</TabsTrigger>
-          <TabsTrigger value="files">Arquivos</TabsTrigger>
-          <TabsTrigger value="skills">Skills</TabsTrigger>
-          <TabsTrigger value="changes">Alterações</TabsTrigger>
-          <TabsTrigger value="settings">Configurações</TabsTrigger>
-        </TabsList>
+        {/* Rolagem horizontal: 7 abas não cabem em telas estreitas. */}
+        <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+          <TabsList className="w-max">
+            <TabsTrigger value="overview">Visão geral</TabsTrigger>
+            <TabsTrigger value="files">Arquivos</TabsTrigger>
+            <TabsTrigger value="skills">Skills</TabsTrigger>
+            <TabsTrigger value="changes">Alterações</TabsTrigger>
+            <TabsTrigger value="settings">Configurações</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="pt-4">
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -80,12 +83,12 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
         </TabsContent>
         <TabsContent value="skills" className="space-y-8 pt-4">
           <section className="space-y-3">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="font-semibold">Deste projeto</h2>
                 <p className="text-sm text-muted-foreground">Valem só para {project.name}.</p>
               </div>
-              <div className="flex shrink-0 gap-2">
+              <div className="flex flex-wrap gap-2 sm:shrink-0">
                 <ImportSkillsDialog projectId={project.id} />
                 <SkillDialog mode="create" projectId={project.id} />
               </div>

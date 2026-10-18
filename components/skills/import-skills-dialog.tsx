@@ -111,7 +111,7 @@ export function ImportSkillsDialog({ projectId, projects }: Props) {
       <DialogTrigger render={<Button variant="outline" />}>
         <UploadIcon /> Importar arquivos
       </DialogTrigger>
-      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Importar skills</DialogTitle>
           <DialogDescription>

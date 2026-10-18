@@ -98,7 +98,7 @@ export function CreateTokenDialog({ projects, endpoint }: Props) {
       <DialogTrigger render={<Button />}>
         <PlusIcon /> Novo token
       </DialogTrigger>
-      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         {created ? (
           <>
             <DialogHeader>

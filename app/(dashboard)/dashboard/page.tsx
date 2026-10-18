@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ACTIVITY_LABELS, type ActivityAction } from "@/lib/activity";
 import { getCurrentUser } from "@/lib/auth/dal";
@@ -25,10 +26,7 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Olá, {user.name.split(" ")[0]}</h1>
-        <p className="text-sm text-muted-foreground">Hub de repositórios de contexto dos seus projetos.</p>
-      </div>
+      <PageHeader title={<>Olá, {user.name.split(" ")[0]}</>} description={<>Hub de repositórios de contexto dos seus projetos.</>} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map(({ label, value, icon: Icon }) => (

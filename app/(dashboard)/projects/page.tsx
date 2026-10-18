@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/dal";
@@ -21,15 +22,15 @@ export default async function ProjectsPage() {
 
   return (
     <>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Projetos</h1>
-          <p className="text-sm text-muted-foreground">Cada projeto é um repositório git de contexto no padrão do hub.</p>
-        </div>
-        <Link href="/projects/new" className={cn(buttonVariants())}>
-          <PlusIcon /> Novo projeto
-        </Link>
-      </div>
+      <PageHeader
+        title="Projetos"
+        description="Cada projeto é um repositório git de contexto no padrão do hub."
+        actions={
+          <Link href="/projects/new" className={cn(buttonVariants())}>
+            <PlusIcon /> Novo projeto
+          </Link>
+        }
+      />
 
       {projects.length === 0 ? (
         <EmptyState

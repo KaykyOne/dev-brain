@@ -4,6 +4,7 @@ import { CopyButton } from "@/components/mcp/copy-button";
 import { CreateTokenDialog } from "@/components/mcp/create-token-dialog";
 import { InstallSnippets } from "@/components/mcp/install-snippets";
 import { TokenTable } from "@/components/mcp/token-table";
+import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listAgentTokens } from "@/lib/agent/queries";
 import { getCurrentUser } from "@/lib/auth/dal";
@@ -20,15 +21,11 @@ export default async function McpPage() {
 
   return (
     <>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">MCP</h1>
-          <p className="text-sm text-muted-foreground">
-            Conecte o Claude Code, o Codex e outros agentes aos repositórios de contexto do hub.
-          </p>
-        </div>
-        <CreateTokenDialog projects={projects.map(({ id, name }) => ({ id, name }))} endpoint={endpoint} />
-      </div>
+      <PageHeader
+        title="MCP"
+        description="Conecte o Claude Code, o Codex e outros agentes aos repositórios de contexto do hub."
+        actions={<CreateTokenDialog projects={projects.map(({ id, name }) => ({ id, name }))} endpoint={endpoint} />}
+      />
 
       <Card>
         <CardHeader>
