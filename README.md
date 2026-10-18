@@ -24,6 +24,19 @@ O prefixo vem do caminho de `APP_URL` (`https://vps.kayky.dev.br/ai` → `basePa
 - O proxy reverso deve **repassar o caminho completo, sem remover o prefixo**. Ex. (nginx):
   `location /ai/ { proxy_pass http://127.0.0.1:3000; }` (sem barra final no `proxy_pass`).
   Com Traefik, não use o middleware `StripPrefix`.
+  Com Caddy, use `handle` (e **não** `handle_path`, que remove o prefixo) e não adicione `redir /ai /ai/`
+  (o Next normaliza `/ai/` para `/ai` e geraria um loop):
+
+  ```caddy
+  @ai path /ai /ai/*
+  handle @ai {
+      reverse_proxy 127.0.0.1:3221
+  }
+  ```
+
+  Se o Caddy roda em Docker com o Caddyfile montado como **arquivo** (bind mount), editar com um editor que troca
+  o arquivo (inode novo) faz o container continuar lendo a versão antiga: `caddy reload` não aplica nada.
+  Use `docker restart caddy` (ou edite no mesmo inode) e confira com `docker exec caddy grep "@ai" /etc/caddy/Caddyfile`.
 - Sem prefixo, use `APP_URL=http://localhost:3000`.
 
 ## Desenvolvimento local (sem Docker no app)
