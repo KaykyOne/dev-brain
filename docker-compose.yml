@@ -46,6 +46,9 @@ services:
       # Sobrescreve o DATABASE_URL do .env (que aponta para localhost, usado fora do Docker).
       DATABASE_URL: *database-url
       APP_URL: ${APP_URL:-http://localhost:3000}
+      # Aponta para o volume. Sem isto, um CONTEXT_REPOS_DIR relativo no .env (via env_file) sobrescreveria o da
+      # imagem e cairia em /app/data, onde o usuário do container não pode gravar.
+      CONTEXT_REPOS_DIR: /data/context-repos
     depends_on:
       migrate:
         condition: service_completed_successfully

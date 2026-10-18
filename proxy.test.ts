@@ -31,6 +31,12 @@ describe("proxy", () => {
     expect(proxy(request("/dashboard", "session=abc")).headers.get("location")).toBeNull();
   });
 
+  it("protege todas as áreas privadas, incluindo /logs", () => {
+    for (const area of ["dashboard", "projects", "skills", "mcp", "profile", "logs"]) {
+      expect(config.matcher).toContain(`/${area}/:path*`);
+    }
+  });
+
   // Regressão: redirecionar /login por causa do cookie gerava loop com cookie obsoleto.
   it("não intercepta /login", () => {
     expect(config.matcher).not.toContain("/login");

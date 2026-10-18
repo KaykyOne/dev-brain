@@ -3,6 +3,7 @@ import "server-only";
 import type { Project } from "@/db/schema";
 import { contextRepos } from "@/lib/context-repo";
 import type { CommitInfo } from "@/lib/context-repo/repo";
+import { logger } from "@/lib/logger";
 
 type RepoRef = Pick<Project, "name" | "slug" | "description" | "defaultBranch">;
 
@@ -21,7 +22,7 @@ export async function getRepoInfo(project: RepoRef) {
     const [files, summary] = await Promise.all([contextRepos.files(project.slug), contextRepos.summary(project.slug)]);
     return { files, commits: summary.commits, head: summary.head };
   } catch (error) {
-    console.error(`Repositório de contexto indisponível (${project.slug})`, error);
+    await logger.warn("projects", `Repositório de contexto indisponível ("${project.slug}")`, { error });
     return null;
   }
 }

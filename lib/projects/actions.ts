@@ -10,6 +10,7 @@ import { fail, type ActionResult } from "@/lib/action-result";
 import { contextRepos } from "@/lib/context-repo";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { isUniqueViolation } from "@/lib/db-errors";
+import { logger } from "@/lib/logger";
 import { normalizeRelativePath } from "@/lib/security/paths";
 import { checkSkillContent } from "@/lib/skills/content";
 import { createProjectSchema, projectSchema } from "@/lib/validations/project";
@@ -85,7 +86,9 @@ export async function deleteProject(id: string): Promise<ActionResult> {
   if (!project) return fail("Projeto não encontrado");
 
   // O histórico git é preservado em .trash/ do volume de repositórios.
-  await contextRepos.archive(project.slug).catch((error) => console.error("Falha ao arquivar o repositório", error));
+  await contextRepos
+    .archive(project.slug)
+    .catch((error) => logger.error("projects", `Falha ao arquivar o repositório de "${project.slug}"`, { error }));
 
   await logActivity({ action: "project.deleted", actorId: user.id, metadata: { name: project.name } });
 

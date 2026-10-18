@@ -32,6 +32,7 @@ export const contextCategory = pgEnum("context_category", [
   "memory",
   "skill",
 ]);
+export const logLevel = pgEnum("log_level", ["info", "warn", "error"]);
 export const proposalStatus = pgEnum("proposal_status", [
   "pending",
   "approved",
@@ -192,6 +193,26 @@ export const activityLogs = pgTable(
   (table) => [index("activity_logs_actor_created_idx").on(table.actorId, table.createdAt)],
 );
 
+// Logs da aplicação (erros, avisos e eventos de diagnóstico), exibidos na página Logs.
+export const appLogs = pgTable(
+  "app_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    level: logLevel("level").notNull(),
+    // Origem do log (ex.: "projects", "mcp", "startup", "request").
+    scope: text("scope").notNull(),
+    message: text("message").notNull(),
+    details: jsonb("details").$type<Record<string, unknown>>().notNull().default({}),
+    stack: text("stack"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("app_logs_created_idx").on(table.createdAt),
+    index("app_logs_level_created_idx").on(table.level, table.createdAt),
+  ],
+);
+
+export type AppLog = typeof appLogs.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Skill = typeof skills.$inferSelect;
 export type ContextFile = typeof contextFiles.$inferSelect;

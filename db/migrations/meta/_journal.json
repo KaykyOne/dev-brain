@@ -43,6 +43,13 @@
       "when": 1792173799901,
       "tag": "0005_hub_account_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792343272774,
+      "tag": "0006_app_logs",
+      "breakpoints": true
     }
   ]
 }

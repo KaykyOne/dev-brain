@@ -10,6 +10,7 @@ import { changeProposals, projects } from "@/db/schema";
 import { logActivity } from "@/lib/activity";
 import { contextRepos, RepoError } from "@/lib/context-repo";
 import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 import { createProjectWithRepo } from "@/lib/projects/create";
 import { findSecrets } from "@/lib/security/secrets";
 import { findSkillForProject, listProjectSkills, listUniversalSkills } from "@/lib/skills/queries";
@@ -36,7 +37,7 @@ async function guard(task: () => Promise<CallToolResult>): Promise<CallToolResul
     return await task();
   } catch (failure) {
     if (failure instanceof RepoError) return error(failure.message);
-    console.error("Falha na ferramenta MCP", failure);
+    await logger.error("mcp", "Falha em ferramenta MCP", { error: failure });
     return error("Erro interno ao acessar o repositório de contexto.");
   }
 }

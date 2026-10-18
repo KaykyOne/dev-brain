@@ -8,6 +8,7 @@ import { logActivity } from "@/lib/activity";
 import { fail, type ActionResult } from "@/lib/action-result";
 import { contextRepos } from "@/lib/context-repo";
 import { isUniqueViolation } from "@/lib/db-errors";
+import { logger } from "@/lib/logger";
 import { normalizeSkillContent } from "@/lib/skills/content";
 import { slugify } from "@/lib/slug";
 
@@ -67,8 +68,11 @@ export async function createProjectWithRepo(input: {
     );
   } catch (error) {
     await db.delete(projects).where(eq(projects.id, project.id));
-    console.error("Falha ao criar o repositório de contexto", error);
-    return fail("Não foi possível criar o repositório git do projeto");
+    await logger.error("projects", `Falha ao criar o repositório git do projeto "${values.slug}"`, {
+      error,
+      details: { slug: values.slug, branch: values.defaultBranch, reposRoot: contextRepos.root() },
+    });
+    return fail("Não foi possível criar o repositório git do projeto. Veja o motivo na página Logs.");
   }
 
   await logActivity({

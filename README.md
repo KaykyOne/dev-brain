@@ -15,6 +15,14 @@ Os serviços: `db` (Postgres), `migrate` (aplica as migrations e encerra) e `app
 só sobe depois das migrations). Dentro do Docker o `DATABASE_URL` aponta para o serviço `db`, ignorando o do `.env`.
 Variáveis do compose: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` e `APP_PORT`.
 
+## Logs
+
+Erros, avisos e eventos do servidor são gravados na tabela `app_logs` e aparecem na página **Logs** (filtro por nível,
+busca e detalhes com stack). Cobrem falhas que o usuário vê (ex.: criação de repositório), erros não tratados de
+renderização, route handlers e server actions (`onRequestError`), e um diagnóstico na subida: git instalado e pasta dos
+repositórios gravável. Tokens e senhas são redigidos antes de gravar; registros com mais de 30 dias são apagados na subida.
+Também saem no stdout (`npm run logs`).
+
 ## Prefixo de caminho (ex.: `/ai`)
 
 O prefixo vem do caminho de `APP_URL` (`https://vps.kayky.dev.br/ai` → `basePath: "/ai"`), em um único lugar
