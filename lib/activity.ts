@@ -10,6 +10,7 @@ export const ACTIVITY_LABELS = {
   "skill.created": "Skill criada",
   "skill.updated": "Skill atualizada",
   "skill.deleted": "Skill removida",
+  "skill.promoted": "Skill tornada universal",
   "token.created": "Token MCP criado",
   "token.revoked": "Token MCP revogado",
   "context.written": "Arquivo de contexto gravado por agente",

@@ -4,9 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2Icon, PencilIcon, PlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { MarkdownEditor } from "@/components/markdown/markdown-editor";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -45,6 +46,7 @@ export function SkillDialog(props: SkillDialogProps) {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setValue,
@@ -97,7 +99,7 @@ export function SkillDialog(props: SkillDialogProps) {
           <PlusIcon /> Nova skill
         </DialogTrigger>
       )}
-      <DialogContent className="max-h-[90svh] overflow-y-auto">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{props.mode === "edit" ? "Editar skill" : "Nova skill"}</DialogTitle>
           <DialogDescription>
@@ -145,14 +147,19 @@ export function SkillDialog(props: SkillDialogProps) {
               <FieldError errors={[errors.description]} />
             </Field>
             <Field data-invalid={!!errors.content}>
-              <FieldLabel htmlFor="skill-content">Conteúdo (SKILL.md)</FieldLabel>
-              <Textarea
-                id="skill-content"
-                rows={8}
-                className="font-mono text-xs"
-                placeholder="Opcional. Importe um arquivo ou cole o Markdown aqui."
-                aria-invalid={!!errors.content}
-                {...register("content")}
+              <FieldLabel>Conteúdo (SKILL.md)</FieldLabel>
+              <Controller
+                control={control}
+                name="content"
+                render={({ field }) => (
+                  <MarkdownEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                    ariaLabel="Conteúdo do SKILL.md"
+                    invalid={!!errors.content}
+                    placeholder="Opcional. Importe um arquivo ou escreva o Markdown aqui."
+                  />
+                )}
               />
               <FieldError errors={[errors.content]} />
             </Field>

@@ -11,7 +11,7 @@ import { getCurrentUser } from "@/lib/auth/dal";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { slugify } from "@/lib/slug";
 import { checkSkillContent } from "./content";
-import { skillSchema } from "@/lib/validations/skill";
+import { promoteSkillSchema, skillSchema } from "@/lib/validations/skill";
 
 const MAX_BULK_IMPORT = 50;
 
@@ -178,4 +178,51 @@ export async function importSkills(projectId: string | null, input: unknown): Pr
   }
 
   return { ok: true, data: result };
+}
+
+/**
+ * Transforma uma skill de projeto em universal: cria a universal com o conteúdo já editado pelo usuário e,
+ * a menos que `keepOriginal` seja verdadeiro, remove a original do projeto. Tudo em uma transação.
+ */
+export async function promoteSkill(id: string, input: unknown): Promise<ActionResult> {
+  const user = await getCurrentUser();
+
+  const parsed = promoteSkillSchema.safeParse(input);
+  if (!parsed.success) return fail("Dados inválidos", z.flattenError(parsed.error).fieldErrors);
+
+  const { keepOriginal, ...values } = parsed.data;
+
+  const prepared = prepareContent(values.content);
+  if (!prepared.success) return prepared.result;
+
+  const slug = slugify(values.name);
+  if (!slug) return fail("Dados inválidos", { name: ["Use letras ou números no nome"] });
+
+  const [original] = await db
+    .select({ id: skills.id, projectId: skills.projectId })
+    .from(skills)
+    .where(and(eq(skills.id, id), eq(skills.ownerId, user.id)))
+    .limit(1);
+  if (!original?.projectId) return fail("Só skills de projeto podem ser tornadas universais");
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(skills).values({ ...values, content: prepared.content, slug, projectId: null, ownerId: user.id });
+      if (!keepOriginal) await tx.delete(skills).where(eq(skills.id, original.id));
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return fail("Dados inválidos", { name: ["Já existe uma skill universal com esse nome"] });
+    }
+    throw error;
+  }
+
+  await logActivity({
+    action: "skill.promoted",
+    actorId: user.id,
+    projectId: original.projectId,
+    metadata: { name: values.name, keptOriginal: keepOriginal },
+  });
+
+  return { ok: true, data: undefined };
 }

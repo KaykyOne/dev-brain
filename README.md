@@ -15,6 +15,17 @@ Os serviços: `db` (Postgres), `migrate` (aplica as migrations e encerra) e `app
 só sobe depois das migrations). Dentro do Docker o `DATABASE_URL` aponta para o serviço `db`, ignorando o do `.env`.
 Variáveis do compose: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` e `APP_PORT`.
 
+## Skills: busca, promoção e editor Markdown
+
+- Cada seção da página **Skills** (universais e por projeto) tem um campo de busca: título, descrição, conteúdo do
+  `SKILL.md` e, em projetos, o nome do projeto (sem diferenciar maiúsculas nem acentos). Os acertos são grifados em
+  amarelo; quando o termo está só no conteúdo, apenas o caminho da skill é grifado.
+- **Tornar universal** (ícone de globo nas skills de projeto) abre um modal para revisar e editar a skill antes de
+  confirmar. Por padrão a skill é movida; marque "Manter também no projeto" para copiar.
+- O editor Markdown (`components/markdown`) usa CodeMirror 6 (carregado sob demanda) com barra de formatação, modo
+  dividido e preview renderizado (`react-markdown` + GFM; HTML cru não é interpretado). É usado ao criar/editar skills,
+  ao promovê-las e no cadastro de projeto; arquivos `.md` do repositório abrem no visualizador (renderizado ou código).
+
 ## Logs
 
 Erros, avisos e eventos do servidor são gravados na tabela `app_logs` e aparecem na página **Logs** (filtro por nível,

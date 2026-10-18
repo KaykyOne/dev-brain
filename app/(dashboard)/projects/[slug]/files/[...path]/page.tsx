@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { MarkdownViewer } from "@/components/markdown/markdown-viewer";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { contextRepos } from "@/lib/context-repo";
@@ -32,9 +33,13 @@ export default async function ProjectFilePage({ params }: PageProps<"/projects/[
         </Link>
         <h1 className="min-w-0 truncate font-mono text-sm font-medium">{file.path}</h1>
       </div>
-      <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/30 p-4 font-mono text-sm leading-relaxed">
-        {file.content}
-      </pre>
+      {file.path.toLowerCase().endsWith(".md") ? (
+        <MarkdownViewer source={file.content} />
+      ) : (
+        <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/30 p-4 font-mono text-sm leading-relaxed">
+          {file.content}
+        </pre>
+      )}
     </>
   );
 }

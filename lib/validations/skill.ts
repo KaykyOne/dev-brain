@@ -33,3 +33,8 @@ export const skillListSchema = z
       seen.add(slug);
     }
   });
+
+/** Promoção de uma skill de projeto a universal: os campos (já editados) e se o original permanece no projeto. */
+export const promoteSkillSchema = skillSchema.extend({ keepOriginal: z.boolean() });
+
+export type PromoteSkillInput = z.infer<typeof promoteSkillSchema>;

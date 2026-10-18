@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createProject, updateProject } from "@/lib/projects/actions";
 import { slugify } from "@/lib/slug";
+import { MarkdownEditDialog } from "@/components/markdown/markdown-edit-dialog";
 import { MarkdownImportButton } from "@/components/skills/markdown-import-button";
 import { Badge } from "@/components/ui/badge";
 import { createProjectSchema, type CreateProjectInput, type ProjectInput } from "@/lib/validations/project";
@@ -175,6 +176,12 @@ export function ProjectForm({ project, universalSkills = [] }: ProjectFormProps)
                         if (description) setValue(`skills.${index}.description`, description, { shouldValidate: true });
                         setValue(`skills.${index}.content`, content, { shouldValidate: true });
                       }}
+                    />
+                    <MarkdownEditDialog
+                      title={`SKILL.md de ${skillRows[index]?.name || `skill ${index + 1}`}`}
+                      label={skillRows[index]?.content ? "Editar SKILL.md" : "Escrever SKILL.md"}
+                      value={skillRows[index]?.content ?? ""}
+                      onSave={(content) => setValue(`skills.${index}.content`, content, { shouldValidate: true, shouldDirty: true })}
                     />
                     {skillRows[index]?.content && (
                       <span className="text-xs text-muted-foreground">
