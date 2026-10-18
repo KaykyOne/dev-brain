@@ -44,4 +44,5 @@ deploy.config.json
 
 # repositórios de contexto criados pelo app (dados, não código)
 /data/
+/context/
 .autodeploy-last.log
