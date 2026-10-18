@@ -8,3 +8,7 @@ node_modules
 docker-compose.yml
 Dockerfile
 .dockerignore
+data
+context
+deploy.config.json
+.autodeploy-last.log

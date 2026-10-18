@@ -13,6 +13,8 @@ const envSchema = z.object({
   ADMIN_EMAIL: z.email().default("kaykyzioti@gmail.com"),
   ADMIN_NAME: z.string().min(1).default("Kayky Zioti"),
   ADMIN_INITIAL_PASSWORD: z.string().min(8).default("Senha123?"),
+  // Pasta onde ficam os repositórios git de contexto (um por projeto). Em produção, aponte para um volume.
+  CONTEXT_REPOS_DIR: z.string().min(1).default("./data/context-repos"),
   SESSION_COOKIE_NAME: z.string().min(1).default("session"),
   SESSION_MAX_AGE_DAYS: z.coerce.number().int().positive().default(7),
 });

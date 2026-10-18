@@ -40,3 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+deploy.config.json
+
+# repositórios de contexto criados pelo app (dados, não código)
+/data/
+.autodeploy-last.log

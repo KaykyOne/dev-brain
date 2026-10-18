@@ -24,10 +24,15 @@ CMD ["npx", "drizzle-kit", "migrate"]
 # Runtime: apenas o necessário, sem root.
 FROM base AS runner
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
-RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
+# git: os repositórios de contexto dos projetos são criados e commitados pelo app.
+RUN apk add --no-cache git && addgroup -S nodejs && adduser -S nextjs -G nodejs \
+  && mkdir -p /data/context-repos && chown -R nextjs:nodejs /data
+ENV CONTEXT_REPOS_DIR=/data/context-repos
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# Template dos repositórios de contexto (lido em tempo de execução).
+COPY --from=builder --chown=nextjs:nodejs /app/templates ./templates
 USER nextjs
 EXPOSE 3000
 CMD ["node", "server.js"]
