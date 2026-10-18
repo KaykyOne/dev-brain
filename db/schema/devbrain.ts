@@ -145,9 +145,11 @@ export const agentTokens = pgTable(
   "agent_tokens",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    projectId: uuid("project_id")
+    ownerId: uuid("owner_id")
       .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Nulo = token de conta (hub): lista e cria projetos, sem acesso ao conteúdo de nenhum deles.
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     // Somente o hash é armazenado; o token em claro é exibido uma única vez.
     tokenHash: text("token_hash").notNull().unique(),
