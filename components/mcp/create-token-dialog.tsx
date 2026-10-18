@@ -20,7 +20,7 @@ import {
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createAgentToken } from "@/lib/agent/actions";
+import { createAgentToken, type CreatedToken } from "@/lib/agent/actions";
 import { ACCOUNT_SCOPES, AGENT_SCOPES, PROJECT_SCOPES, type AgentScope } from "@/lib/agent/scopes";
 import {
   ACCOUNT_TARGET,
@@ -31,6 +31,7 @@ import {
 
 const PROJECT_DEFAULT_SCOPES: AgentScope[] = ["context:read", "context:write", "changes:propose"];
 
+import { AgentsInstructions } from "./agents-instructions";
 import { CopyButton } from "./copy-button";
 import { InstallSnippets } from "./install-snippets";
 
@@ -42,7 +43,7 @@ type Props = {
 export function CreateTokenDialog({ projects, endpoint }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [created, setCreated] = useState<{ token: string; name: string } | null>(null);
+  const [created, setCreated] = useState<CreatedToken | null>(null);
 
   const {
     register,
@@ -90,7 +91,7 @@ export function CreateTokenDialog({ projects, endpoint }: Props) {
       return;
     }
 
-    setCreated({ token: result.data.token, name: result.data.name });
+    setCreated(result.data);
   }
 
   return (
@@ -113,7 +114,23 @@ export function CreateTokenDialog({ projects, endpoint }: Props) {
               </code>
               <CopyButton value={created.token} />
             </div>
-            <InstallSnippets endpoint={endpoint} token={created.token} />
+            <section className="min-w-0 space-y-3">
+              <h3 className="text-sm font-semibold">{created.project ? "1. Instale o MCP" : "Instale o MCP"}</h3>
+              <InstallSnippets endpoint={endpoint} token={created.token} projectSlug={created.project?.slug} />
+            </section>
+            {created.project && (
+              <section className="min-w-0 space-y-3 border-t pt-4">
+                <div>
+                  <h3 className="text-sm font-semibold">2. Obrigue o uso: cole no AGENTS.md</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Sem isto o agente trata o MCP como opcional. Cole no <code className="font-mono">AGENTS.md</code> do
+                    projeto de código (o <code className="font-mono">CLAUDE.md</code> pode importá-lo com{" "}
+                    <code className="font-mono">@AGENTS.md</code>).
+                  </p>
+                </div>
+                <AgentsInstructions name={created.project.name} slug={created.project.slug} />
+              </section>
+            )}
           </>
         ) : (
           <>

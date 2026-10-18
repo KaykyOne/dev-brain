@@ -12,9 +12,17 @@ import { ACCOUNT_TARGET, agentTokenSchema } from "@/lib/validations/agent-token"
 
 import { issueAgentToken } from "./issue";
 
+/** Resultado da criação: o token em claro (exibido uma única vez) e, se for de projeto, qual projeto. */
+export type CreatedToken = {
+  token: string;
+  prefix: string;
+  name: string;
+  project: { name: string; slug: string } | null;
+};
+
 export async function createAgentToken(
   input: unknown,
-): Promise<ActionResult<{ token: string; prefix: string; name: string }>> {
+): Promise<ActionResult<CreatedToken>> {
   const user = await getCurrentUser();
 
   const parsed = agentTokenSchema.safeParse(input);
@@ -24,13 +32,15 @@ export async function createAgentToken(
 
   const accountToken = projectId === ACCOUNT_TARGET;
 
+  let project: CreatedToken["project"] = null;
   if (!accountToken) {
-    const [project] = await db
-      .select({ id: projects.id })
+    const [found] = await db
+      .select({ name: projects.name, slug: projects.slug })
       .from(projects)
       .where(and(eq(projects.id, projectId), eq(projects.ownerId, user.id)))
       .limit(1);
-    if (!project) return fail("Projeto não encontrado");
+    if (!found) return fail("Projeto não encontrado");
+    project = found;
   }
 
   const { id, token, prefix } = await issueAgentToken({
@@ -48,7 +58,7 @@ export async function createAgentToken(
     metadata: { name, tokenId: id, scope: accountToken ? "account" : "project" },
   });
 
-  return { ok: true, data: { token, prefix, name } };
+  return { ok: true, data: { token, prefix, name, project } };
 }
 
 export async function revokeAgentToken(id: string): Promise<ActionResult> {

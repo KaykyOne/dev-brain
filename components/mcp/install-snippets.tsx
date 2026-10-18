@@ -2,10 +2,9 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { CopyButton } from "./copy-button";
+import { mcpServerName, tokenEnvVar } from "@/lib/agent/instructions";
 
-const SERVER_NAME = "devbrain";
-const TOKEN_VAR = "DEVBRAIN_TOKEN";
+import { CopyButton } from "./copy-button";
 
 function Snippet({ title, hint, code }: { title: string; hint?: string; code: string }) {
   return (
@@ -22,13 +21,31 @@ function Snippet({ title, hint, code }: { title: string; hint?: string; code: st
   );
 }
 
-export function InstallSnippets({ endpoint, token }: { endpoint: string; token?: string }) {
+type InstallSnippetsProps = {
+  endpoint: string;
+  token?: string;
+  /** Slug do projeto do token. Ausente = token de conta (hub). */
+  projectSlug?: string | null;
+};
+
+export function InstallSnippets({ endpoint, token, projectSlug }: InstallSnippetsProps) {
   const value = token ?? "<SEU_TOKEN>";
+  const server = mcpServerName(projectSlug);
+  const tokenVar = tokenEnvVar(projectSlug);
+  const isProject = !!projectSlug;
 
-  const claudeCommand = `claude mcp add --transport http --scope user ${SERVER_NAME} ${endpoint} \\\n  --header "Authorization: Bearer ${value}"`;
+  // Token de projeto só vale em uma pasta (escopo local, o padrão do Claude Code); o de conta vale em todas.
+  const scope = isProject ? "" : "--scope user ";
+  const claudeCommand = `claude mcp add --transport http ${scope}${server} ${endpoint} \\\n  --header "Authorization: Bearer ${value}"`;
 
-  const codexEnv = `export ${TOKEN_VAR}="${value}"`;
-  const codexConfig = `[mcp_servers.${SERVER_NAME}]\nurl = "${endpoint}"\nbearer_token_env_var = "${TOKEN_VAR}"`;
+  const mcpJson = JSON.stringify(
+    { mcpServers: { [server]: { type: "http", url: endpoint, headers: { Authorization: `Bearer \${${tokenVar}}` } } } },
+    null,
+    2,
+  );
+
+  const codexEnv = `export ${tokenVar}="${value}"`;
+  const codexConfig = `[mcp_servers.${server}]\nurl = "${endpoint}"\nbearer_token_env_var = "${tokenVar}"`;
 
   return (
     <Tabs defaultValue="claude">
@@ -40,19 +57,30 @@ export function InstallSnippets({ endpoint, token }: { endpoint: string; token?:
       <TabsContent value="claude" className="space-y-4 pt-4">
         <Snippet
           title="Adicionar o servidor"
-          hint="Rode no terminal. Use --scope project para compartilhar via .mcp.json (nesse caso, prefira uma variável de ambiente no header)."
+          hint={
+            isProject
+              ? "Rode no terminal, dentro da pasta do projeto de código: o servidor só fica ativo nessa pasta."
+              : "Rode no terminal. O token de conta vale em todos os seus projetos."
+          }
           code={claudeCommand}
         />
+        {isProject && (
+          <Snippet
+            title="Ou compartilhe pelo .mcp.json"
+            hint={`Na raiz do projeto de código. O token fica na variável ${tokenVar}, e não no arquivo.`}
+            code={mcpJson}
+          />
+        )}
         <Snippet title="Verificar" hint="Dentro do Claude Code, /mcp também mostra o estado." code="claude mcp list" />
       </TabsContent>
 
       <TabsContent value="codex" className="space-y-4 pt-4">
         <Snippet
-          title="1. Exporte o token"
+          title="Exporte o token"
           hint="Adicione ao ~/.bashrc ou ~/.zshrc para persistir."
           code={codexEnv}
         />
-        <Snippet title="2. Adicione ao ~/.codex/config.toml" code={codexConfig} />
+        <Snippet title="Adicione ao ~/.codex/config.toml" code={codexConfig} />
       </TabsContent>
     </Tabs>
   );

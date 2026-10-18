@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { CopyButton } from "@/components/mcp/copy-button";
 import { CreateTokenDialog } from "@/components/mcp/create-token-dialog";
-import { InstallSnippets } from "@/components/mcp/install-snippets";
+import { McpSetup } from "@/components/mcp/mcp-setup";
 import { TokenTable } from "@/components/mcp/token-table";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,18 +53,7 @@ export default async function McpPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Instalação</CardTitle>
-          <CardDescription>
-            Substitua <code className="font-mono">&lt;SEU_TOKEN&gt;</code> por um token criado acima. Ao gerar um token,
-            os mesmos comandos aparecem já preenchidos.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <InstallSnippets endpoint={endpoint} />
-        </CardContent>
-      </Card>
+      <McpSetup projects={projects.map(({ id, name, slug }) => ({ id, name, slug }))} endpoint={endpoint} />
 
       <Card>
         <CardHeader>

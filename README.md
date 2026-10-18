@@ -94,6 +94,8 @@ Crie tokens e copie os comandos de instalação (Claude Code e Codex) na página
 - `APP_URL` — URL pública do app, com prefixo se houver (ex.: `https://vps.kayky.dev.br/ai`).
 - Cada token pertence a um projeto, tem escopos (`context:read`, `changes:propose`), expiração opcional e pode ser revogado. Só o hash é guardado.
 - Ferramentas: `get_project`, `list_context_files`, `list_skills`, `get_skill`, `propose_change`, `get_change`.
+- Instruções para o `AGENTS.md`: ao criar um token de projeto (e na seção "Instruções para o AGENTS.md" da aba `/mcp`) o app gera um texto, copiável e baixável, que torna **obrigatório** o uso do MCP `devbrain-<slug>` (ler o índice e as skills antes da task, registrar o que aprender e parar se o MCP falhar). O agente só é obrigado a seguir o que está no `AGENTS.md`; as dicas do próprio servidor MCP são opcionais para o modelo.
+- Um servidor MCP por projeto (`devbrain-<slug>`, escopo local da pasta do projeto) e um de conta (`devbrain`, escopo de usuário) para listar e criar projetos.
 
 ### Skills
 
