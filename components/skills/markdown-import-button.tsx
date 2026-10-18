@@ -13,7 +13,7 @@ export const MAX_IMPORT_FILES = 20;
 export type ImportedSkill = ParsedSkillMarkdown & { fileName: string; content: string };
 
 /** Nome de fallback: o do arquivo sem extensão, exceto o genérico "SKILL". */
-export const nameFromFile = (fileName: string) => {
+const nameFromFile = (fileName: string) => {
   const base = fileName.replace(/\.(md|markdown)$/i, "");
   return /^skill$/i.test(base) ? "" : base;
 };

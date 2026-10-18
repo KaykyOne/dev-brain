@@ -9,22 +9,21 @@ import { logActivity } from "@/lib/activity";
 import { fail, type ActionResult } from "@/lib/action-result";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { isUniqueViolation } from "@/lib/db-errors";
-import { findSecrets } from "@/lib/security/secrets";
 import { slugify } from "@/lib/slug";
+import { checkSkillContent } from "./content";
 import { skillSchema } from "@/lib/validations/skill";
 
 const MAX_BULK_IMPORT = 50;
 
-/** Conteúdo vazio vira null; conteúdo com segredos é recusado. */
+/** Adapta o resultado da checagem do conteúdo ao formato de erro de campo das actions. */
 function prepareContent(content: string) {
-  const secrets = findSecrets(content);
-  if (secrets.length > 0) {
-    return {
-      success: false,
-      result: fail("Dados inválidos", { content: [`O arquivo parece conter segredos (${secrets.join(", ")})`] }),
-    } as const;
-  }
-  return { success: true, content: content.trim() ? content : null } as const;
+  const checked = checkSkillContent(content);
+  if (checked.ok) return { success: true, content: checked.content } as const;
+
+  return {
+    success: false,
+    result: fail("Dados inválidos", { content: [`O arquivo ${checked.message}`] }),
+  } as const;
 }
 
 const DUPLICATE = fail("Dados inválidos", { name: ["Já existe uma skill com esse nome neste escopo"] });

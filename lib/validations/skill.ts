@@ -33,5 +33,3 @@ export const skillListSchema = z
       seen.add(slug);
     }
   });
-
-export const skillScopeSchema = z.object({ projectId: z.uuid().nullable() });
