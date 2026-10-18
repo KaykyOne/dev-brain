@@ -15,6 +15,17 @@ Os serviços: `db` (Postgres), `migrate` (aplica as migrations e encerra) e `app
 só sobe depois das migrations). Dentro do Docker o `DATABASE_URL` aponta para o serviço `db`, ignorando o do `.env`.
 Variáveis do compose: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` e `APP_PORT`.
 
+## Prefixo de caminho (ex.: `/ai`)
+
+O prefixo vem do caminho de `APP_URL` (`https://vps.kayky.dev.br/ai` → `basePath: "/ai"`), em um único lugar
+(`lib/env.ts`). Links, redirects, assets, `fetch` do cliente e o endpoint MCP seguem esse valor.
+
+- O valor é fixado no **build**; trocar `APP_URL` exige rebuild (`npm run up` já faz).
+- O proxy reverso deve **repassar o caminho completo, sem remover o prefixo**. Ex. (nginx):
+  `location /ai/ { proxy_pass http://127.0.0.1:3000; }` (sem barra final no `proxy_pass`).
+  Com Traefik, não use o middleware `StripPrefix`.
+- Sem prefixo, use `APP_URL=http://localhost:3000`.
+
 ## Desenvolvimento local (sem Docker no app)
 
 ```bash

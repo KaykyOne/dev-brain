@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { apiUrl } from "@/lib/api-url";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 export type UserMenuProps = {
@@ -31,7 +32,7 @@ export function UserMenu({ user }: UserMenuProps) {
     .toUpperCase();
 
   async function logout() {
-    const response = await fetch("/api/auth/logout", { method: "POST" });
+    const response = await fetch(apiUrl("/api/auth/logout"), { method: "POST" });
     if (!response.ok) {
       toast.error("Não foi possível sair");
       return;

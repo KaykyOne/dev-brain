@@ -7,7 +7,11 @@ import { env } from "@/lib/env";
 // obsoleto (sessão expirada ou removida) causaria um loop /dashboard ↔ /login.
 export function proxy(request: NextRequest) {
   if (!request.cookies.has(env.SESSION_COOKIE_NAME)) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    // nextUrl preserva o basePath; `new URL("/login", request.url)` o perderia.
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.search = "";
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();

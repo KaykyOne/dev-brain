@@ -9,14 +9,22 @@ beforeAll(async () => {
   ({ proxy, config } = await import("./proxy"));
 });
 
-const request = (path: string, cookie?: string) =>
-  new NextRequest(`http://localhost:3000${path}`, { headers: cookie ? { cookie } : {} });
+const request = (path: string, cookie?: string, basePath = "") =>
+  new NextRequest(`http://localhost:3000${basePath}${path}`, {
+    headers: cookie ? { cookie } : {},
+    nextConfig: { basePath },
+  });
 
 describe("proxy", () => {
   it("redireciona para /login quando não há cookie de sessão", () => {
     const response = proxy(request("/dashboard"));
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("http://localhost:3000/login");
+  });
+
+  it("preserva o basePath no redirect para /login", () => {
+    const response = proxy(request("/dashboard", undefined, "/ai"));
+    expect(response.headers.get("location")).toBe("http://localhost:3000/ai/login");
   });
 
   it("deixa passar quando há cookie (a validação real é do DAL)", () => {

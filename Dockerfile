@@ -6,12 +6,13 @@ FROM base AS deps
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Build da aplicação. DATABASE_URL só existe para a validação de env no build;
-# nenhuma conexão é feita e o valor não vai para a imagem final.
+# Build da aplicação. DATABASE_URL só existe para a validação de env no build (nenhuma conexão é feita).
+# APP_URL define o basePath, que o Next fixa no build: mudar APP_URL exige rebuild da imagem.
 FROM deps AS builder
 COPY . .
 ARG DATABASE_URL=postgresql://build:build@localhost:5432/build
-ENV DATABASE_URL=$DATABASE_URL NEXT_TELEMETRY_DISABLED=1
+ARG APP_URL=http://localhost:3000
+ENV DATABASE_URL=$DATABASE_URL APP_URL=$APP_URL NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # Aplica as migrations (drizzle-kit) e encerra. Não faz parte da imagem de runtime.

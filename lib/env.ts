@@ -26,3 +26,9 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+/**
+ * Prefixo de caminho derivado de APP_URL (ex.: "/ai" para https://vps.kayky.dev.br/ai; "" na raiz).
+ * É a única fonte do basePath: next.config.ts, fetch do cliente e links absolutos partem daqui.
+ */
+export const basePath = new URL(env.APP_URL).pathname.replace(/\/+$/, "");
