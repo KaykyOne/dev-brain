@@ -15,7 +15,9 @@ export type AgentContext = {
   tokenId: string;
   tokenName: string;
   scopes: AgentScope[];
-  project: typeof projects.$inferSelect;
+  ownerId: string;
+  /** Nulo em token de conta (hub). */
+  project: typeof projects.$inferSelect | null;
 };
 
 const checkRate = createRateLimiter({ limit: 120, windowMs: 60_000 });
@@ -40,7 +42,7 @@ export async function authenticateAgent(
   const [row] = await db
     .select({ token: agentTokens, project: projects })
     .from(agentTokens)
-    .innerJoin(projects, eq(projects.id, agentTokens.projectId))
+    .leftJoin(projects, eq(projects.id, agentTokens.projectId))
     .where(eq(agentTokens.tokenHash, hashToken(token)))
     .limit(1);
 
@@ -70,6 +72,7 @@ export async function authenticateAgent(
       tokenId: row.token.id,
       tokenName: row.token.name,
       scopes: row.token.scopes as AgentScope[],
+      ownerId: row.token.ownerId,
       project: row.project,
     },
   };

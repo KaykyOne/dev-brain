@@ -24,7 +24,7 @@ export default async function McpPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">MCP</h1>
           <p className="text-sm text-muted-foreground">
-            Conecte o Claude Code, o Codex e outros agentes ao contexto dos seus projetos.
+            Conecte o Claude Code, o Codex e outros agentes aos repositórios de contexto do hub.
           </p>
         </div>
         <CreateTokenDialog projects={projects.map(({ id, name }) => ({ id, name }))} endpoint={endpoint} />
@@ -47,9 +47,8 @@ export default async function McpPage() {
         <CardHeader>
           <CardTitle>Tokens</CardTitle>
           <CardDescription>
-            {projects.length === 0
-              ? "Crie um projeto primeiro: cada token dá acesso a um único projeto."
-              : "Cada token dá acesso a um único projeto e pode ser revogado a qualquer momento."}
+            Token de projeto dá acesso a um único repositório; token de conta (hub) só lista e cria projetos. Ambos
+            podem ser revogados a qualquer momento.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -75,21 +74,41 @@ export default async function McpPage() {
           <CardTitle>Ferramentas disponíveis</CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-2 text-sm">
+          <div className="space-y-4 text-sm">
             {[
-              ["get_project", "Metadados do projeto vinculado ao token"],
-              ["list_context_files", "Arquivos de contexto sincronizados (filtro por categoria)"],
-              ["list_skills", "Skills universais e específicas do projeto, com descrição e caminho"],
-              ["get_skill", "Lê o SKILL.md completo de uma skill pelo slug"],
-              ["propose_change", "Propõe alteração em um .md; fica pendente até revisão humana"],
-              ["get_change", "Consulta o estado de uma proposta"],
-            ].map(([name, description]) => (
-              <li key={name} className="flex flex-wrap gap-x-3">
-                <code className="font-mono">{name}</code>
-                <span className="text-muted-foreground">{description}</span>
-              </li>
+              [
+                "Token de conta (hub)",
+                [
+                  ["list_projects", "Lista os projetos (repositórios de contexto) da conta"],
+                  ["create_project", "Inicia um projeto novo: cria o repositório git no padrão do hub e, se quiser, já emite o token dele"],
+                ],
+              ],
+              [
+                "Token de projeto",
+                [
+                  ["get_project", "Metadados do projeto e estado do repositório (commits, último commit)"],
+                  ["list_context_files", "Arquivos versionados no repositório (filtro por pasta)"],
+                  ["read_context_file", "Lê um arquivo do repositório (README.md, 00-base.md, skills/...)"],
+                  ["write_context_file", "Grava um arquivo e faz um commit local só com ele (escopo context:write; nunca há push)"],
+                  ["repo_log", "Últimos commits do repositório"],
+                  ["list_skills / get_skill", "Skills cadastradas no DevBrain (universais e do projeto)"],
+                  ["propose_change / get_change", "Propõe alteração para revisão humana; fica pendente até aprovação"],
+                ],
+              ],
+            ].map(([title, tools]) => (
+              <div key={title as string} className="space-y-2">
+                <p className="font-medium">{title as string}</p>
+                <ul className="space-y-2">
+                  {(tools as string[][]).map(([name, description]) => (
+                    <li key={name} className="flex flex-wrap gap-x-3">
+                      <code className="font-mono">{name}</code>
+                      <span className="text-muted-foreground">{description}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         </CardContent>
       </Card>
     </>

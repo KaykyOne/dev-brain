@@ -11,7 +11,7 @@ import { findSecrets } from "@/lib/security/secrets";
 
 import type { AgentContext } from "./auth";
 
-export const MAX_CONTENT_LENGTH = 100_000;
+const MAX_CONTENT_LENGTH = 100_000;
 
 export const proposeChangeSchema = z.object({
   file_path: z.string().trim().min(1).max(300),
@@ -38,6 +38,7 @@ export async function createAgentProposal(
     return { ok: false, error: `O conteúdo parece conter segredos (${secrets.join(", ")}). Remova antes de propor.` };
   }
 
+  if (!context.project) return { ok: false, error: "Token de conta não pode propor alterações em projetos." };
   const projectId = context.project.id;
 
   const [duplicate] = await db

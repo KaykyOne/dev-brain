@@ -19,7 +19,7 @@ export function listAgentTokens(ownerId: string) {
       projectName: projects.name,
     })
     .from(agentTokens)
-    .innerJoin(projects, eq(projects.id, agentTokens.projectId))
-    .where(eq(projects.ownerId, ownerId))
+    .leftJoin(projects, eq(projects.id, agentTokens.projectId))
+    .where(eq(agentTokens.ownerId, ownerId))
     .orderBy(desc(agentTokens.createdAt));
 }

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2Icon, PlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,15 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createAgentToken } from "@/lib/agent/actions";
-import { AGENT_SCOPES, type AgentScope } from "@/lib/agent/scopes";
-import { agentTokenSchema, EXPIRATION_OPTIONS, type AgentTokenInput } from "@/lib/validations/agent-token";
+import { ACCOUNT_SCOPES, AGENT_SCOPES, PROJECT_SCOPES, type AgentScope } from "@/lib/agent/scopes";
+import {
+  ACCOUNT_TARGET,
+  agentTokenSchema,
+  EXPIRATION_OPTIONS,
+  type AgentTokenInput,
+} from "@/lib/validations/agent-token";
+
+const PROJECT_DEFAULT_SCOPES: AgentScope[] = ["context:read", "context:write", "changes:propose"];
 
 import { CopyButton } from "./copy-button";
 import { InstallSnippets } from "./install-snippets";
@@ -42,19 +49,25 @@ export function CreateTokenDialog({ projects, endpoint }: Props) {
     control,
     handleSubmit,
     reset,
+    setValue,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<AgentTokenInput>({
     resolver: zodResolver(agentTokenSchema),
     defaultValues: {
       name: "",
-      projectId: projects.length === 1 ? projects[0].id : "",
-      scopes: ["context:read", "changes:propose"],
+      projectId: projects.length === 1 ? projects[0].id : ACCOUNT_TARGET,
+      scopes: projects.length === 1 ? PROJECT_DEFAULT_SCOPES : ACCOUNT_SCOPES,
       expiration: "90",
     },
   });
 
-  const projectItems = Object.fromEntries(projects.map((project) => [project.id, project.name]));
+  const projectItems = {
+    [ACCOUNT_TARGET]: "Conta (hub): iniciar projetos novos",
+    ...Object.fromEntries(projects.map((project) => [project.id, project.name])),
+  };
+  const target = useWatch({ control, name: "projectId" });
+  const availableScopes = target === ACCOUNT_TARGET ? ACCOUNT_SCOPES : PROJECT_SCOPES;
 
   function onOpenChange(next: boolean) {
     setOpen(next);
@@ -82,7 +95,7 @@ export function CreateTokenDialog({ projects, endpoint }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger render={<Button disabled={projects.length === 0} />}>
+      <DialogTrigger render={<Button />}>
         <PlusIcon /> Novo token
       </DialogTrigger>
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
@@ -106,7 +119,10 @@ export function CreateTokenDialog({ projects, endpoint }: Props) {
           <>
             <DialogHeader>
               <DialogTitle>Novo token de acesso</DialogTitle>
-              <DialogDescription>O token dá acesso a um único projeto, com os escopos escolhidos.</DialogDescription>
+              <DialogDescription>
+                Token de projeto: lê e grava o repositório de um único projeto. Token de conta: lista e cria projetos
+                (para o agente iniciar um repositório novo).
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)} noValidate>
               <FieldGroup>
@@ -122,16 +138,26 @@ export function CreateTokenDialog({ projects, endpoint }: Props) {
                 </Field>
 
                 <Field data-invalid={!!errors.projectId}>
-                  <FieldLabel>Projeto</FieldLabel>
+                  <FieldLabel>Acesso</FieldLabel>
                   <Controller
                     control={control}
                     name="projectId"
                     render={({ field }) => (
-                      <Select items={projectItems} value={field.value || null} onValueChange={field.onChange}>
+                      <Select
+                        items={projectItems}
+                        value={field.value || null}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setValue("scopes", value === ACCOUNT_TARGET ? ACCOUNT_SCOPES : PROJECT_DEFAULT_SCOPES, {
+                            shouldValidate: true,
+                          });
+                        }}
+                      >
                         <SelectTrigger className="w-full" aria-invalid={!!errors.projectId}>
-                          <SelectValue placeholder="Selecione um projeto" />
+                          <SelectValue placeholder="Selecione o acesso" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value={ACCOUNT_TARGET}>{projectItems[ACCOUNT_TARGET]}</SelectItem>
                           {projects.map((project) => (
                             <SelectItem key={project.id} value={project.id}>
                               {project.name}
@@ -151,7 +177,7 @@ export function CreateTokenDialog({ projects, endpoint }: Props) {
                     name="scopes"
                     render={({ field }) => (
                       <div className="space-y-2">
-                        {(Object.keys(AGENT_SCOPES) as AgentScope[]).map((scope) => (
+                        {availableScopes.map((scope) => (
                           <label key={scope} className="flex items-start gap-2 text-sm">
                             <Checkbox
                               checked={field.value.includes(scope)}

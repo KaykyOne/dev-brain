@@ -50,7 +50,7 @@ export function TokenTable({ tokens, now }: { tokens: Tokens; now: Date }) {
                 <p className="font-medium">{token.name}</p>
                 <p className="font-mono text-xs text-muted-foreground">{token.prefix}…</p>
               </TableCell>
-              <TableCell>{token.projectName}</TableCell>
+              <TableCell>{token.projectName ?? <Badge variant="secondary">Conta (hub)</Badge>}</TableCell>
               <TableCell className="space-x-1">
                 {token.scopes.map((scope) => (
                   <Badge key={scope} variant="outline" className="font-mono">

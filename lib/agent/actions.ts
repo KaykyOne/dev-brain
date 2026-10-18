@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
@@ -8,9 +8,9 @@ import { agentTokens, projects } from "@/db/schema";
 import { logActivity } from "@/lib/activity";
 import { fail, type ActionResult } from "@/lib/action-result";
 import { getCurrentUser } from "@/lib/auth/dal";
-import { agentTokenSchema } from "@/lib/validations/agent-token";
+import { ACCOUNT_TARGET, agentTokenSchema } from "@/lib/validations/agent-token";
 
-import { generateToken } from "./token";
+import { issueAgentToken } from "./issue";
 
 export async function createAgentToken(
   input: unknown,
@@ -22,27 +22,30 @@ export async function createAgentToken(
 
   const { name, projectId, scopes, expiration } = parsed.data;
 
-  const [project] = await db
-    .select({ id: projects.id })
-    .from(projects)
-    .where(and(eq(projects.id, projectId), eq(projects.ownerId, user.id)))
-    .limit(1);
-  if (!project) return fail("Projeto não encontrado");
+  const accountToken = projectId === ACCOUNT_TARGET;
 
-  const { token, hash, prefix } = generateToken();
-  const expiresAt =
-    expiration === "never" ? null : new Date(Date.now() + Number(expiration) * 24 * 60 * 60 * 1000);
+  if (!accountToken) {
+    const [project] = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.ownerId, user.id)))
+      .limit(1);
+    if (!project) return fail("Projeto não encontrado");
+  }
 
-  const [created] = await db
-    .insert(agentTokens)
-    .values({ projectId, name, scopes, expiresAt, tokenHash: hash, tokenPrefix: prefix })
-    .returning({ id: agentTokens.id });
+  const { id, token, prefix } = await issueAgentToken({
+    ownerId: user.id,
+    projectId: accountToken ? null : projectId,
+    name,
+    scopes,
+    expiresInDays: expiration === "never" ? null : Number(expiration),
+  });
 
   await logActivity({
     action: "token.created",
     actorId: user.id,
-    projectId,
-    metadata: { name, tokenId: created.id },
+    projectId: accountToken ? null : projectId,
+    metadata: { name, tokenId: id, scope: accountToken ? "account" : "project" },
   });
 
   return { ok: true, data: { token, prefix, name } };
@@ -54,17 +57,7 @@ export async function revokeAgentToken(id: string): Promise<ActionResult> {
   const [token] = await db
     .update(agentTokens)
     .set({ revokedAt: new Date() })
-    .where(
-      and(
-        eq(agentTokens.id, id),
-        isNull(agentTokens.revokedAt),
-        // Só tokens de projetos do próprio usuário.
-        inArray(
-          agentTokens.projectId,
-          db.select({ id: projects.id }).from(projects).where(eq(projects.ownerId, user.id)),
-        ),
-      ),
-    )
+    .where(and(eq(agentTokens.id, id), isNull(agentTokens.revokedAt), eq(agentTokens.ownerId, user.id)))
     .returning({ name: agentTokens.name, projectId: agentTokens.projectId });
 
   if (!token) return fail("Token não encontrado");
