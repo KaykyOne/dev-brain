@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
+import { CommitList } from "@/components/projects/commit-list";
 import { RepoFiles } from "@/components/projects/repo-files";
 import { ProjectForm } from "@/components/projects/project-form";
 import { AddLibrarySkillsDialog } from "@/components/skills/add-library-skills-dialog";
@@ -13,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { formatDateTime, shortSha } from "@/lib/format";
 import { getProjectDetail, listProjects } from "@/lib/projects/queries";
-import { getRepoInfo } from "@/lib/projects/repo-info";
+import { getCommitHistory, getRepoInfo } from "@/lib/projects/repo-info";
 import { listLibrarySkills, listLinkedLibrarySkills, listProjectSkills, listUniversalSkills } from "@/lib/skills/queries";
 
 export async function generateMetadata({ params }: PageProps<"/projects/[slug]">): Promise<Metadata> {
@@ -25,13 +26,14 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
   const { slug } = await params;
   const user = await getCurrentUser();
   const { project, proposals, pendingCount } = await getProjectDetail(user.id, slug);
-  const [universalSkills, projectSkills, linkedSkills, librarySkills, allProjects, repo] = await Promise.all([
+  const [universalSkills, projectSkills, linkedSkills, librarySkills, allProjects, repo, history] = await Promise.all([
     listUniversalSkills(user.id),
     listProjectSkills(project.id),
     listLinkedLibrarySkills(project.id),
     listLibrarySkills(user.id),
     listProjects(user.id),
     getRepoInfo(project),
+    getCommitHistory(project),
   ]);
 
   const projectRefs = allProjects.map(({ id, name }) => ({ id, name }));
@@ -64,6 +66,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
           <TabsList className="w-max">
             <TabsTrigger value="overview">Visão geral</TabsTrigger>
             <TabsTrigger value="files">Arquivos</TabsTrigger>
+            <TabsTrigger value="commits">Commits{repo ? ` (${repo.commits})` : ""}</TabsTrigger>
             <TabsTrigger value="skills">Skills</TabsTrigger>
             <TabsTrigger value="changes">Alterações</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
@@ -88,6 +91,9 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
 
         <TabsContent value="files" className="pt-4">
           <RepoFiles slug={project.slug} files={repo?.files ?? []} />
+        </TabsContent>
+        <TabsContent value="commits" className="pt-4">
+          <CommitList commits={history} branch={project.defaultBranch} />
         </TabsContent>
         <TabsContent value="skills" className="space-y-8 pt-4">
           <section className="space-y-3">

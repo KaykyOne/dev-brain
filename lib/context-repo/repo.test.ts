@@ -9,7 +9,9 @@ import {
   isRepo,
   listFiles,
   readRepoFile,
+  repoCommitDates,
   repoDir,
+  repoHistory,
   repoLog,
   writeRepoFile,
 } from "./repo";
@@ -151,5 +153,13 @@ describe("archiveRepo", () => {
     expect(await isRepo(repoDir(root, "descartavel"))).toBe(false);
     expect(await isRepo(target!)).toBe(true);
     expect(await archiveRepo(root, "descartavel")).toBeNull();
+  });
+});
+
+describe("histórico e atividade", () => {
+  it("repoHistory devolve mais que o limite do MCP e repoCommitDates conta os commits recentes", async () => {
+    const history = await repoHistory(dir, 300);
+    expect(history.length).toBe((await repoLog(dir, 100)).length);
+    expect(await repoCommitDates(dir, 30)).toHaveLength(history.length);
   });
 });

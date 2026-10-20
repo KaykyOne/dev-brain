@@ -2,6 +2,7 @@ import { ActivityIcon, FileTextIcon, FolderGitIcon, GitCommitHorizontalIcon, Git
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { CommitChart } from "@/components/shared/commit-chart";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +41,16 @@ export default async function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Commits por projeto</CardTitle>
+          <CardDescription>Últimos {data.commitActivity.days.length} dias, por dia e por projeto.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CommitChart activity={data.commitActivity} />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

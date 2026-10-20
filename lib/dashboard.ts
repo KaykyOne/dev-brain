@@ -4,7 +4,7 @@ import { and, count, desc, eq, or } from "drizzle-orm";
 
 import { db } from "@/db";
 import { activityLogs, changeProposals, projects, skills } from "@/db/schema";
-import { getRecentCommits, getRepoSummaries } from "@/lib/projects/repo-info";
+import { getCommitActivity, getRecentCommits, getRepoSummaries } from "@/lib/projects/repo-info";
 
 export async function getDashboardData(ownerId: string) {
   const [ownedProjects, [skillCount], [pendingCount], recentActivity] = await Promise.all([
@@ -29,9 +29,10 @@ export async function getDashboardData(ownerId: string) {
       .limit(8),
   ]);
 
-  const [summaries, recentCommits] = await Promise.all([
+  const [summaries, recentCommits, commitActivity] = await Promise.all([
     getRepoSummaries(ownedProjects),
     getRecentCommits(ownedProjects, 6),
+    getCommitActivity(ownedProjects, 30),
   ]);
   const contextCount = [...summaries.values()].reduce((total, info) => total + (info?.files.length ?? 0), 0);
 
@@ -41,6 +42,7 @@ export async function getDashboardData(ownerId: string) {
     skills: skillCount.value,
     pendingChanges: pendingCount.value,
     recentCommits,
+    commitActivity,
     recentActivity,
   };
 }

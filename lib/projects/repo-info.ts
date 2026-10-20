@@ -3,6 +3,7 @@ import "server-only";
 import type { Project } from "@/db/schema";
 import { contextRepos } from "@/lib/context-repo";
 import type { CommitInfo } from "@/lib/context-repo/repo";
+import { dayKey } from "@/lib/format";
 import { logger } from "@/lib/logger";
 
 type RepoRef = Pick<Project, "name" | "slug" | "description" | "defaultBranch">;
@@ -54,4 +55,45 @@ export async function getRecentCommits(list: RepoRef[], limit: number): Promise<
     .flat()
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, limit);
+}
+
+/** Histórico longo de um projeto, para a aba Commits. */
+export async function getCommitHistory(project: RepoRef, limit = 300): Promise<CommitInfo[]> {
+  try {
+    await ensure(project);
+    return await contextRepos.history(project.slug, limit);
+  } catch (error) {
+    await logger.warn("projects", `Histórico indisponível ("${project.slug}")`, { error });
+    return [];
+  }
+}
+
+export type CommitActivity = {
+  /** Dias (AAAA-MM-DD), do mais antigo ao de hoje. */
+  days: string[];
+  series: { slug: string; name: string; total: number; counts: number[] }[];
+};
+
+/** Commits por dia e por projeto nos últimos `days` dias (inclui hoje). */
+export async function getCommitActivity(list: RepoRef[], days: number, now = new Date()): Promise<CommitActivity> {
+  const keys = Array.from({ length: days }, (_, index) => dayKey(new Date(now.getTime() - (days - 1 - index) * 86_400_000)));
+  const position = new Map(keys.map((key, index) => [key, index]));
+
+  const series = await Promise.all(
+    list.map(async (project) => {
+      const counts = Array<number>(days).fill(0);
+      try {
+        await ensure(project);
+        for (const date of await contextRepos.commitDates(project.slug, days + 1)) {
+          const index = position.get(dayKey(date));
+          if (index !== undefined) counts[index] += 1;
+        }
+      } catch {
+        // Repositório indisponível: a série fica zerada.
+      }
+      return { slug: project.slug, name: project.name, counts, total: counts.reduce((sum, value) => sum + value, 0) };
+    }),
+  );
+
+  return { days: keys, series: series.sort((a, b) => b.total - a.total) };
 }

@@ -220,9 +220,8 @@ export async function writeRepoFile(
   });
 }
 
-export async function repoLog(dir: string, limit = 20): Promise<CommitInfo[]> {
-  const count = Math.min(Math.max(Math.trunc(limit), 1), 100);
-  const output = await git(dir, ["log", `-n${count}`, "--format=%H%x1f%an%x1f%aI%x1f%s"]);
+async function readLog(dir: string, args: string[]): Promise<CommitInfo[]> {
+  const output = await git(dir, ["log", ...args, "--format=%H%x1f%an%x1f%aI%x1f%s"]);
   return output
     .split("\n")
     .filter(Boolean)
@@ -230,6 +229,24 @@ export async function repoLog(dir: string, limit = 20): Promise<CommitInfo[]> {
       const [sha, author, date, subject] = line.split("\x1f");
       return { sha, author, date, subject };
     });
+}
+
+export const clampLimit = (limit: number, max: number) => Math.min(Math.max(Math.trunc(limit), 1), max);
+
+export function repoLog(dir: string, limit = 20): Promise<CommitInfo[]> {
+  return readLog(dir, [`-n${clampLimit(limit, 100)}`]);
+}
+
+/** Histórico longo para a listagem de commits da interface (o MCP segue limitado a 100). */
+export function repoHistory(dir: string, limit = 300): Promise<CommitInfo[]> {
+  return readLog(dir, [`-n${clampLimit(limit, 1000)}`]);
+}
+
+/** Datas (ISO) dos commits dos últimos `days` dias, para gráficos de atividade. */
+export async function repoCommitDates(dir: string, days: number): Promise<string[]> {
+  const since = `${clampLimit(days, 365)}.days.ago`;
+  const output = await git(dir, ["log", `--since=${since}`, "--format=%aI"]);
+  return output.split("\n").filter(Boolean);
 }
 
 export async function repoSummary(dir: string) {

@@ -11,6 +11,8 @@ import {
   listFiles,
   readRepoFile,
   repoDir,
+  repoCommitDates,
+  repoHistory,
   repoLog,
   repoSummary,
   writeRepoFile,
@@ -33,6 +35,8 @@ export const contextRepos = {
   write: (slug: string, path: string, content: string, options: { message: string; author?: string }) =>
     writeRepoFile(repoDir(root(), slug), path, content, options),
   log: (slug: string, limit?: number) => repoLog(repoDir(root(), slug), limit),
+  history: (slug: string, limit?: number) => repoHistory(repoDir(root(), slug), limit),
+  commitDates: (slug: string, days: number) => repoCommitDates(repoDir(root(), slug), days),
   summary: (slug: string) => repoSummary(repoDir(root(), slug)),
   archive: (slug: string) => archiveRepo(root(), slug),
 };
