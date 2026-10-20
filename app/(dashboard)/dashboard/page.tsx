@@ -45,7 +45,7 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Commits por projeto</CardTitle>
-          <CardDescription>Últimos {data.commitActivity.days.length} dias, por dia e por projeto.</CardDescription>
+          <CardDescription>Evolução diária nos últimos {data.commitActivity.days.length} dias, uma linha por projeto.</CardDescription>
         </CardHeader>
         <CardContent>
           <CommitChart activity={data.commitActivity} />
