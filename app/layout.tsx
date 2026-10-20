@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { basePath } from "@/lib/env";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +20,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: { default: "DevBrain", template: "%s · Gulosos AI" },
   description: "DevBrain",
+  // O favicon segue o tema do navegador: ícone escuro em abas claras e claro em abas escuras.
+  icons: {
+    icon: [
+      { url: `${basePath}/favicon-light.png`, type: "image/png", media: "(prefers-color-scheme: light)" },
+      { url: `${basePath}/favicon-dark.png`, type: "image/png", media: "(prefers-color-scheme: dark)" },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
