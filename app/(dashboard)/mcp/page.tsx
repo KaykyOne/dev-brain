@@ -77,7 +77,7 @@ export default async function McpPage() {
                   ["read_context_file", "Lê um arquivo do repositório (README.md, 00-base.md, skills/...)"],
                   ["write_context_file", "Grava um arquivo e faz um commit local só com ele (escopo context:write; nunca há push)"],
                   ["repo_log", "Últimos commits do repositório"],
-                  ["list_skills / get_skill", "Skills cadastradas no DevBrain (universais e do projeto)"],
+                  ["list_skills / get_skill", "Skills cadastradas no DevBrain (universais, da biblioteca aplicadas ao projeto e do próprio projeto)"],
                   ["propose_change / get_change", "Propõe alteração para revisão humana; fica pendente até aprovação"],
                 ],
               ],

@@ -16,6 +16,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
+import { Logo } from "@/components/shared/logo";
+
 import { UserMenu, type UserMenuProps } from "./user-menu";
 
 const navItems = [
@@ -32,9 +34,10 @@ export function AppSidebar({ user }: UserMenuProps) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <span className="px-2 py-1 text-lg font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-          DevBrain
-        </span>
+        <div className="flex items-center gap-2 px-2 py-1 group-data-[collapsible=icon]:px-0">
+          <Logo size={28} className="shrink-0 rounded-md" />
+          <span className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:hidden">DevBrain</span>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

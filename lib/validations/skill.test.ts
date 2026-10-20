@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createProjectSchema } from "./project";
-import { skillListSchema } from "./skill";
+import { projectIdsSchema, promoteSkillSchema, skillListSchema, skillTargetSchema } from "./skill";
 
 const skill = (name: string) => ({ name, description: "Quando usar", content: "" });
 
@@ -32,6 +32,44 @@ describe("createProjectSchema", () => {
   it("exige o campo skills junto com os dados do projeto", () => {
     const base = { name: "App", slug: "app", description: "", repositoryPath: "", defaultBranch: "main" };
     expect(createProjectSchema.safeParse(base).success).toBe(false);
-    expect(createProjectSchema.safeParse({ ...base, skills: [skill("Criar endpoint")] }).success).toBe(true);
+    expect(createProjectSchema.safeParse({ ...base, skills: [skill("Criar endpoint")], librarySkillIds: [] }).success).toBe(true);
+  });
+
+  it("aceita só ids válidos nas skills da biblioteca", () => {
+    const base = { name: "App", slug: "app", description: "", repositoryPath: "", defaultBranch: "main", skills: [] };
+    const id = "7f8c2f0e-6c43-4d44-9a4e-0f1d2c3b4a5e";
+    expect(createProjectSchema.safeParse({ ...base, librarySkillIds: [id] }).success).toBe(true);
+    expect(createProjectSchema.safeParse({ ...base, librarySkillIds: ["nao-e-id"] }).success).toBe(false);
+  });
+});
+
+describe("skillTargetSchema", () => {
+  it("aceita universal, biblioteca ou o id de um projeto", () => {
+    expect(skillTargetSchema.safeParse("universal").success).toBe(true);
+    expect(skillTargetSchema.safeParse("library").success).toBe(true);
+    expect(skillTargetSchema.safeParse("7f8c2f0e-6c43-4d44-9a4e-0f1d2c3b4a5e").success).toBe(true);
+  });
+
+  it("rejeita qualquer outro valor", () => {
+    expect(skillTargetSchema.safeParse("global").success).toBe(false);
+    expect(skillTargetSchema.safeParse("").success).toBe(false);
+  });
+});
+
+describe("promoteSkillSchema", () => {
+  const base = { name: "Autodeploy", description: "Como publicar", content: "", keepOriginal: false, target: "library", projectIds: [] };
+
+  it("aceita os dois destinos", () => {
+    expect(promoteSkillSchema.safeParse(base).success).toBe(true);
+    expect(promoteSkillSchema.safeParse({ ...base, target: "universal" }).success).toBe(true);
+  });
+
+  it("rejeita destino inválido (o id de um projeto não é destino de promoção)", () => {
+    expect(promoteSkillSchema.safeParse({ ...base, target: "7f8c2f0e-6c43-4d44-9a4e-0f1d2c3b4a5e" }).success).toBe(false);
+  });
+
+  it("limita a seleção de projetos", () => {
+    const id = "7f8c2f0e-6c43-4d44-9a4e-0f1d2c3b4a5e";
+    expect(projectIdsSchema.safeParse(Array(201).fill(id)).success).toBe(false);
   });
 });

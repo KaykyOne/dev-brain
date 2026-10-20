@@ -1,12 +1,17 @@
+import { AssistantWidget } from "@/components/assistant/assistant-widget";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { publicStatus, resolveAiConfig } from "@/lib/assistant/config";
 import { getCurrentUser } from "@/lib/auth/dal";
+import { env } from "@/lib/env";
 
 import { AppSidebar } from "./app-sidebar";
 
 export async function DashboardShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  // Só o estado público: a chave de API nunca chega ao navegador.
+  const assistant = publicStatus(resolveAiConfig(env));
 
   return (
     <SidebarProvider>
@@ -21,6 +26,7 @@ export async function DashboardShell({ children }: { children: React.ReactNode }
         </header>
         <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6">{children}</div>
       </SidebarInset>
+      <AssistantWidget status={assistant} />
     </SidebarProvider>
   );
 }

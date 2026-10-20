@@ -1,9 +1,9 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
-import { projects, skills } from "@/db/schema";
+import { projects, projectSkillLinks, skills } from "@/db/schema";
 import { logActivity } from "@/lib/activity";
 import { fail, type ActionResult } from "@/lib/action-result";
 import { contextRepos } from "@/lib/context-repo";
@@ -29,8 +29,19 @@ export async function createProjectWithRepo(input: {
   ownerId: string;
   values: NewProject;
   skills?: NewSkill[];
+  /** Skills da biblioteca (ids) a aplicar ao projeto novo. */
+  librarySkillIds?: string[];
 }): Promise<ActionResult<{ id: string; slug: string }>> {
   const { ownerId, values, skills: projectSkills = [] } = input;
+
+  const libraryIds = [...new Set(input.librarySkillIds ?? [])];
+  if (libraryIds.length > 0) {
+    const found = await db
+      .select({ id: skills.id })
+      .from(skills)
+      .where(and(inArray(skills.id, libraryIds), eq(skills.ownerId, ownerId), eq(skills.scope, "library")));
+    if (found.length !== libraryIds.length) return fail("Skill da biblioteca não encontrada");
+  }
 
   let project: { id: string; slug: string };
   try {
@@ -48,10 +59,15 @@ export async function createProjectWithRepo(input: {
             description: skill.description,
             content: normalizeSkillContent(skill.content),
             slug: slugify(skill.name),
+            scope: "project" as const,
             projectId: created.id,
             ownerId,
           })),
         );
+      }
+
+      if (libraryIds.length > 0) {
+        await tx.insert(projectSkillLinks).values(libraryIds.map((skillId) => ({ projectId: created.id, skillId })));
       }
 
       return created;
@@ -79,7 +95,7 @@ export async function createProjectWithRepo(input: {
     action: "project.created",
     actorId: ownerId,
     projectId: project.id,
-    metadata: { name: values.name, skills: projectSkills.length },
+    metadata: { name: values.name, skills: projectSkills.length, librarySkills: libraryIds.length },
   });
 
   return { ok: true, data: project };

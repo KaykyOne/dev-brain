@@ -20,30 +20,27 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { importSkills } from "@/lib/skills/actions";
 import { slugify } from "@/lib/slug";
+import { skillTargetItems } from "@/lib/skills/targets";
 
 import { MarkdownImportButton, MAX_IMPORT_FILES, type ImportedSkill } from "./markdown-import-button";
-
-const UNIVERSAL = "universal";
 
 type Item = Omit<ImportedSkill, "name" | "description"> & { key: string; name: string; description: string };
 
 type Props = {
-  /** Projeto fixo. `null` = universal. Ignorado quando `projects` é informado. */
-  projectId: string | null;
+  /** Destino inicial: "universal", "library" ou o id de um projeto. */
+  target: string;
   /** Quando informado, permite escolher o escopo (universal ou um projeto). */
   projects?: { id: string; name: string }[];
 };
 
-export function ImportSkillsDialog({ projectId, projects }: Props) {
+export function ImportSkillsDialog({ target, projects }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
-  const [scope, setScope] = useState<string>(projectId ?? UNIVERSAL);
+  const [scope, setScope] = useState<string>(target);
   const [pending, startTransition] = useTransition();
 
-  const scopeItems = projects
-    ? { [UNIVERSAL]: "Universal (todos os projetos)", ...Object.fromEntries(projects.map((p) => [p.id, p.name])) }
-    : null;
+  const scopeItems = projects ? skillTargetItems(projects) : null;
 
   function onOpenChange(next: boolean) {
     setOpen(next);
@@ -81,7 +78,7 @@ export function ImportSkillsDialog({ projectId, projects }: Props) {
   function onConfirm() {
     startTransition(async () => {
       const payload = items.map(({ name, description, content }) => ({ name, description, content }));
-      const result = await importSkills(scope === UNIVERSAL ? null : scope, payload);
+      const result = await importSkills(scope, payload);
 
       if (!result.ok) {
         toast.error(result.error);
@@ -135,7 +132,7 @@ export function ImportSkillsDialog({ projectId, projects }: Props) {
                 ))}
               </SelectContent>
             </Select>
-            <FieldDescription>Todas as skills desta importação vão para o mesmo escopo.</FieldDescription>
+            <FieldDescription>Todas as skills desta importação vão para o mesmo destino.</FieldDescription>
           </Field>
         )}
 

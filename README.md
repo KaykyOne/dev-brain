@@ -1,8 +1,49 @@
-# Gulosos AI
+<div align="center">
 
-Next.js 16 (App Router, fullstack via Route Handlers) · PostgreSQL · Drizzle ORM · Zod · shadcn/ui.
+<img src="public/icon.png" alt="DevBrain" width="160" />
 
-## Rodando com Docker (tudo junto)
+# DevBrain
+
+**A central de contexto dos seus agentes de IA.**
+Um repositório git de contexto por projeto, servido por MCP para o Claude Code, o Codex e qualquer agente compatível.
+
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)
+![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Drizzle-336791?logo=postgresql&logoColor=white)
+![MCP](https://img.shields.io/badge/MCP-Streamable%20HTTP-7c3aed)
+![Docker](https://img.shields.io/badge/Docker-pronto-2496ed?logo=docker&logoColor=white)
+
+</div>
+
+---
+
+## O que é
+
+Agentes de código esquecem tudo a cada sessão. O DevBrain resolve isso guardando, **por projeto**, as regras, skills,
+visão geral, tasks e notas em um repositório git, e entregando esse contexto ao agente pelo protocolo MCP.
+
+> **Git é a fonte da verdade** dos documentos. O PostgreSQL guarda apenas metadados e estado operacional.
+
+```
+ Você ──► DevBrain (web) ──► repositório git de contexto (um por projeto)
+                                      ▲
+ Claude Code / Codex ──── MCP ────────┘   lê o contexto, registra o que aprendeu
+```
+
+## Principais recursos
+
+| | Recurso | O que faz |
+|---|---|---|
+| 📁 | **Projetos** | Cada projeto ganha um repositório git no padrão do hub: `README.md` com índice "quando carregar", `00-base.md`, `skills/`, `tasks/`, `notas/`, `templates-pr/` e `raiz/`. |
+| ✨ | **Skills** | Universais, de biblioteca (criadas uma vez, aplicadas em vários projetos) e de projeto. Busca com grifo, promoção e editor Markdown. |
+| 🔌 | **Servidor MCP** | Tokens por projeto (ou de conta), com escopos, expiração e revogação. Comandos de instalação prontos para Claude Code e Codex. |
+| 📜 | **AGENTS.md por projeto** | Gera, para copiar ou baixar, o texto que torna **obrigatório** o uso do MCP pelo agente. |
+| 🤖 | **Assistente de IA** | Chat que cria skills e projetos e grava contexto, mostrando cada ação como um passo. |
+| 🪵 | **Logs** | Erros e eventos do servidor persistidos e filtráveis na própria interface. |
+
+## Começando
+
+### Com Docker (tudo junto)
 
 ```bash
 cp .env.example .env     # opcional: ajuste APP_URL, ADMIN_* etc.
@@ -15,7 +56,67 @@ Os serviços: `db` (Postgres), `migrate` (aplica as migrations e encerra) e `app
 só sobe depois das migrations). Dentro do Docker o `DATABASE_URL` aponta para o serviço `db`, ignorando o do `.env`.
 Variáveis do compose: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` e `APP_PORT`.
 
-## Skills: busca, promoção e editor Markdown
+### Desenvolvimento local (sem Docker no app)
+
+```bash
+npm install
+cp .env.example .env
+npm run db:up        # sobe só o Postgres
+npm run db:migrate   # aplica as migrations
+npm run dev
+```
+
+Na inicialização o app garante o usuário único (`ADMIN_EMAIL`): se não existir, é criado com `ADMIN_INITIAL_PASSWORD`
+(padrão `Senha123?`); se existir, nada é alterado. Troque a senha em **Perfil** após o primeiro acesso.
+
+Scripts úteis: `npm test` (Vitest), `npm run typecheck`, `npm run lint`.
+Após alterar o schema: `npm run db:generate && npm run db:migrate`.
+
+## Conectando um agente (MCP)
+
+O servidor MCP (Streamable HTTP) fica em `${APP_URL}/api/mcp`, autenticado por token Bearer. Em **/mcp** você cria
+tokens e copia os comandos já preenchidos.
+
+**Claude Code**
+
+```bash
+claude mcp add --transport http devbrain-<slug> https://seu-app/api/mcp \
+  --header "Authorization: Bearer <SEU_TOKEN>"
+```
+
+**Codex**
+
+```bash
+export DEVBRAIN_TOKEN_<SLUG>="<SEU_TOKEN>"
+codex mcp add devbrain-<slug> --url https://seu-app/api/mcp \
+  --bearer-token-env-var DEVBRAIN_TOKEN_<SLUG>
+```
+
+- Um servidor MCP **por projeto** (`devbrain-<slug>`, vale na pasta do projeto) e um **de conta** (`devbrain`) para
+  listar e criar projetos.
+- Cada token tem escopos (`context:read`, `context:write`, `changes:propose`), expiração opcional e pode ser
+  revogado. Só o hash é guardado. Nunca há push: cada gravação vira um commit local.
+- **Ferramentas (projeto)**: `get_project`, `list_context_files`, `read_context_file`, `write_context_file`,
+  `repo_log`, `list_skills`, `get_skill`, `propose_change`, `get_change`. **(conta)**: `list_projects`, `create_project`.
+- **AGENTS.md**: o agente só é obrigado a seguir o que está no `AGENTS.md`. Na aba `/mcp`, escolha o projeto em
+  "Instruções para o AGENTS.md" e copie ou baixe o texto: ele manda ler o índice e as skills antes de qualquer task,
+  registrar o que aprender e parar se o MCP falhar.
+
+## Skills
+
+- **Universais** valem para todos os projetos automaticamente.
+- **Biblioteca** (hub): skills genéricas e reutilizáveis (ex.: o fluxo de autodeploy). Crie uma vez e escolha em quais
+  projetos aplicar. O conteúdo fica em um lugar só: editar atualiza todos os projetos; remover a aplicação não apaga a
+  skill. Uma skill de projeto pode ser promovida à biblioteca (ou a universal) pelo ícone de globo.
+- **De projeto** pertencem a um único projeto.
+
+Com o mesmo slug em mais de um escopo, o MCP entrega a mais específica: projeto, depois biblioteca, depois universal.
+Ao criar uma skill dá para importar um `SKILL.md`: nome e descrição vêm do frontmatter. O destino de publicação no Git é
+`devbrain/global/skills/<slug>/` ou `<caminho-do-projeto>/skills/<slug>/`.
+
+## Detalhes
+
+### Skills: busca, promoção e editor Markdown
 
 - Cada seção da página **Skills** (universais e por projeto) tem um campo de busca: título, descrição, conteúdo do
   `SKILL.md` e, em projetos, o nome do projeto (sem diferenciar maiúsculas nem acentos). Os acertos são grifados em
@@ -26,7 +127,35 @@ Variáveis do compose: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` e `AP
   dividido e preview renderizado (`react-markdown` + GFM; HTML cru não é interpretado). É usado ao criar/editar skills,
   ao promovê-las e no cadastro de projeto; arquivos `.md` do repositório abrem no visualizador (renderizado ou código).
 
-## Logs
+### Assistente de IA
+
+Botão no canto inferior direito de todas as telas do dashboard que abre um chat com um assistente capaz de criar e
+atualizar skills, aplicar skills da biblioteca em projetos, criar e editar projetos e gravar arquivos de contexto. Cada
+ação aparece no chat como um passo (ação, alvo, resultado, o que mudou antes → depois e links), como no Claude Code.
+
+**Configuração (`.env`)**: já vem pré-configurada para o **DeepSeek Flash**; basta definir a chave. Sem `AI_API_KEY` o
+assistente fica desativado (o chat explica o que falta).
+
+| Variável | Padrão | |
+|---|---|---|
+| `AI_API_KEY` | _(vazia)_ | Chave do provedor (https://platform.deepseek.com/api_keys). Nunca vai para o navegador. |
+| `AI_PROVIDER` | `deepseek` | `deepseek`, `openai`, `openrouter` ou `custom` (qualquer API compatível com a da OpenAI). |
+| `AI_MODEL` | `deepseek-flash` | Obrigatório fora do DeepSeek. |
+| `AI_BASE_URL` | do provedor | Só para `custom`, ou para sobrescrever a URL. |
+| `AI_THINKING` | `disabled` | `enabled` liga o raciocínio do DeepSeek (mais lento e caro). O `reasoning_content` é devolvido em todos os turnos, como a API exige. |
+| `AI_MAX_STEPS` | `12` | Rodadas de ferramentas por mensagem. |
+
+**Ações (`lib/assistant/actions.json`)**: lista o que o assistente pode fazer. Cada ação tem `enabled` (libera ou
+bloqueia), `confirm` (exige aprovação do usuário no chat antes de executar) e `mutates`. Toda ação de remoção tem
+`confirm: true` (um teste garante). Para adicionar uma ação: descreva-a no JSON, valide os argumentos em
+`schemas.ts` e implemente o handler em `handlers.ts`; testes conferem que os três descrevem as mesmas ações.
+
+**Segurança**: a rota `/api/assistant` exige sessão e limita 30 mensagens por minuto; os argumentos de cada ação são
+validados (esquemas estritos) e as ações reutilizam as mesmas regras de posse e de segredos do restante do app; ações
+destrutivas só rodam com a aprovação do usuário, imposta no servidor; o conteúdo lido (skills, arquivos) é tratado como
+dado, e não como instrução. Erros do provedor vão para a página Logs, com o detalhe técnico e sem a chave.
+
+### Logs
 
 Erros, avisos e eventos do servidor são gravados na tabela `app_logs` e aparecem na página **Logs** (filtro por nível,
 busca e detalhes com stack). Cobrem falhas que o usuário vê (ex.: criação de repositório), erros não tratados de
@@ -34,7 +163,7 @@ renderização, route handlers e server actions (`onRequestError`), e um diagnó
 repositórios gravável. Tokens e senhas são redigidos antes de gravar; registros com mais de 30 dias são apagados na subida.
 Também saem no stdout (`npm run logs`).
 
-## Prefixo de caminho (ex.: `/ai`)
+### Prefixo de caminho (ex.: `/ai`)
 
 O prefixo vem do caminho de `APP_URL` (`https://vps.kayky.dev.br/ai` → `basePath: "/ai"`), em um único lugar
 (`lib/env.ts`). Links, redirects, assets, `fetch` do cliente e o endpoint MCP seguem esse valor.
@@ -58,47 +187,17 @@ O prefixo vem do caminho de `APP_URL` (`https://vps.kayky.dev.br/ai` → `basePa
   Use `docker restart caddy` (ou edite no mesmo inode) e confira com `docker exec caddy grep "@ai" /etc/caddy/Caddyfile`.
 - Sem prefixo, use `APP_URL=http://localhost:3000`.
 
-## Desenvolvimento local (sem Docker no app)
-
-```bash
-npm install
-cp .env.example .env
-npm run db:up        # sobe só o Postgres
-npm run db:migrate   # aplica as migrations
-npm run dev
-```
-
-Na inicialização o app garante o usuário único (`ADMIN_EMAIL`): se não existir, é criado com `ADMIN_INITIAL_PASSWORD` (padrão `Senha123?`); se existir, nada é alterado. Troque a senha em **Perfil** após o primeiro acesso.
-
 ## Estrutura
 
-- `lib/env.ts` — único ponto de acesso às variáveis de ambiente, validadas com Zod no boot.
-- `db/` — schema Drizzle, conexão, migrations.
-- `lib/auth/` — hash de senha (scrypt), sessões em banco (cookie httpOnly) e DAL.
-- `app/api/auth/*` — Route Handlers de login e logout.
+- `app/` — rotas (App Router), Route Handlers (`/api/mcp`, `/api/assistant`, `/api/auth/*`).
+- `components/` — UI (shadcn/ui), editor Markdown, assistente, skills, MCP.
+- `lib/` — env validado com Zod (`lib/env.ts`), auth (scrypt + sessões em banco), repositórios de contexto, skills, agente MCP, assistente, logger.
+- `db/` — schema Drizzle e migrations.
+- `templates/context/` — modelo do repositório de contexto criado para cada projeto.
 - `proxy.ts` — redirecionamento otimista; a validação real é feita no DAL.
 
-Após alterar `db/schema.ts`: `npm run db:generate && npm run db:migrate`.
+## Roadmap
 
-## DevBrain
+1. Fundação e projetos ✅ · 2. Integração GitHub · 3. Editor Markdown e skills ✅ · 4. Sincronização e PRs · 5. API para agentes ✅
 
-Central de contexto para agentes de IA. Git é a fonte da verdade dos documentos; o PostgreSQL guarda apenas metadados e estado operacional.
-
-Scripts: `npm test` (Vitest), `npm run typecheck`, `npm run lint`.
-
-### MCP
-
-O DevBrain expõe um servidor MCP (Streamable HTTP) em `${APP_URL}/api/mcp`, autenticado por token Bearer.
-Crie tokens e copie os comandos de instalação (Claude Code e Codex) na página `/mcp`.
-
-- `APP_URL` — URL pública do app, com prefixo se houver (ex.: `https://vps.kayky.dev.br/ai`).
-- Cada token pertence a um projeto, tem escopos (`context:read`, `changes:propose`), expiração opcional e pode ser revogado. Só o hash é guardado.
-- Ferramentas: `get_project`, `list_context_files`, `list_skills`, `get_skill`, `propose_change`, `get_change`.
-- Instruções para o `AGENTS.md`: ao criar um token de projeto (e na seção "Instruções para o AGENTS.md" da aba `/mcp`) o app gera um texto, copiável e baixável, que torna **obrigatório** o uso do MCP `devbrain-<slug>` (ler o índice e as skills antes da task, registrar o que aprender e parar se o MCP falhar). O agente só é obrigado a seguir o que está no `AGENTS.md`; as dicas do próprio servidor MCP são opcionais para o modelo.
-- Um servidor MCP por projeto (`devbrain-<slug>`, escopo local da pasta do projeto) e um de conta (`devbrain`, escopo de usuário) para listar e criar projetos.
-
-### Skills
-
-Skills universais (sem projeto) valem para todos os projetos automaticamente; as específicas pertencem a um projeto. Ao criar uma skill dá para importar um `SKILL.md`: nome e descrição vêm do frontmatter e o arquivo é armazenado (`skills.content`) como cópia de trabalho, lida pelos agentes via `get_skill`. O destino de publicação no Git é `devbrain/global/skills/<slug>/` ou `<caminho-do-projeto>/skills/<slug>/`.
-
-Roadmap por etapas: 1) fundação e projetos ✅ · 2) integração GitHub · 3) editor Markdown e skills · 4) sincronização e PRs · 5) API para agentes.
+<div align="center"><sub>Feito pela Gulosos AI</sub></div>

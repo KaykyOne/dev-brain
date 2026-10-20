@@ -34,7 +34,22 @@ export const skillListSchema = z
     }
   });
 
-/** Promoção de uma skill de projeto a universal: os campos (já editados) e se o original permanece no projeto. */
-export const promoteSkillSchema = skillSchema.extend({ keepOriginal: z.boolean() });
+export const SKILL_TARGET_UNIVERSAL = "universal";
+export const SKILL_TARGET_LIBRARY = "library";
+
+/** Onde uma skill nasce: universal, biblioteca ou o id de um projeto. */
+export const skillTargetSchema = z.union([z.literal(SKILL_TARGET_UNIVERSAL), z.literal(SKILL_TARGET_LIBRARY), z.uuid()]);
+
+export const projectIdsSchema = z.array(z.uuid()).max(200);
+
+/**
+ * Promoção de uma skill de projeto: os campos (já editados), para onde vai (universal ou biblioteca), em quais
+ * projetos aplicar (biblioteca) e se o original permanece no projeto.
+ */
+export const promoteSkillSchema = skillSchema.extend({
+  keepOriginal: z.boolean(),
+  target: z.enum([SKILL_TARGET_UNIVERSAL, SKILL_TARGET_LIBRARY]),
+  projectIds: projectIdsSchema,
+});
 
 export type PromoteSkillInput = z.infer<typeof promoteSkillSchema>;

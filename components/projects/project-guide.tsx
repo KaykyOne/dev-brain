@@ -20,7 +20,7 @@ const fields = [
   },
   {
     title: "Skills",
-    body: "Skills universais valem para todos os projetos. As específicas descrevem procedimentos só deste projeto e são lidas pelos agentes via MCP (get_skill). Independente delas, todo repositório já nasce com as regras permanentes em skills/ (proibido-push, ia-externa, arquivos-gerados, commit-do-context...).",
+    body: "Há três tipos. As universais valem para todos os projetos. As da biblioteca são skills genéricas e reutilizáveis (por exemplo, o seu fluxo de autodeploy): você cria uma vez e escolhe aqui, ou depois, só os projetos que as usam, sem copiar o conteúdo. As específicas descrevem procedimentos só deste projeto. Os agentes leem as três via MCP (list_skills e get_skill). Independente delas, todo repositório já nasce com as regras permanentes em skills/ (proibido-push, ia-externa, arquivos-gerados, commit-do-context...).",
   },
 ];
 

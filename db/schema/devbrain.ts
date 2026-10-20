@@ -1,10 +1,12 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  check,
   index,
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -32,6 +34,9 @@ export const contextCategory = pgEnum("context_category", [
   "memory",
   "skill",
 ]);
+// universal: vale para todos os projetos. library: skill genérica da biblioteca, aplicada só aos projetos escolhidos
+// (project_skill_links). project: pertence a um único projeto.
+export const skillScope = pgEnum("skill_scope", ["universal", "library", "project"]);
 export const logLevel = pgEnum("log_level", ["info", "warn", "error"]);
 export const proposalStatus = pgEnum("proposal_status", [
   "pending",
@@ -94,7 +99,7 @@ export const contextFiles = pgTable(
 
 // Registro de skills. `content` é o SKILL.md importado (cópia de trabalho até ser publicado no Git);
 // o caminho no repositório é derivado do slug.
-// projectId nulo = skill universal (vale para todos os projetos do dono).
+// `scope` diz como a skill vale: universal e library não têm projectId; project sempre tem.
 export const skills = pgTable(
   "skills",
   {
@@ -102,6 +107,7 @@ export const skills = pgTable(
     ownerId: uuid("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    scope: skillScope("scope").notNull().default("universal"),
     projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
@@ -113,7 +119,23 @@ export const skills = pgTable(
     uniqueIndex("skills_universal_slug_key").on(table.ownerId, table.slug).where(sql`${table.projectId} is null`),
     unique("skills_project_slug_key").on(table.projectId, table.slug),
     index("skills_owner_id_idx").on(table.ownerId),
+    check("skills_scope_project_check", sql`(${table.scope} = 'project') = (${table.projectId} is not null)`),
   ],
+);
+
+// Aplicação de uma skill da biblioteca a um projeto. Sem duplicar o conteúdo: o projeto só referencia a skill.
+export const projectSkillLinks = pgTable(
+  "project_skill_links",
+  {
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    skillId: uuid("skill_id")
+      .notNull()
+      .references(() => skills.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.skillId] }), index("project_skill_links_skill_idx").on(table.skillId)],
 );
 
 export const changeProposals = pgTable(
@@ -215,6 +237,7 @@ export const appLogs = pgTable(
 export type AppLog = typeof appLogs.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Skill = typeof skills.$inferSelect;
+export type SkillScope = (typeof skillScope.enumValues)[number];
 export type ContextFile = typeof contextFiles.$inferSelect;
 export type ChangeProposal = typeof changeProposals.$inferSelect;
 export type ContextCategory = (typeof contextCategory.enumValues)[number];

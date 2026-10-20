@@ -21,6 +21,10 @@ type McpSetupProps = {
 export function McpSetup({ projects, endpoint }: McpSetupProps) {
   const [target, setTarget] = useState(projects[0]?.id ?? ACCOUNT);
   const project = projects.find((item) => item.id === target) ?? null;
+  // O AGENTS.md é sempre de um projeto: seletor próprio, para não depender do alvo da instalação (que pode ser a conta).
+  const [instructionsId, setInstructionsId] = useState(projects[0]?.id ?? "");
+  const instructionsProject = projects.find((item) => item.id === instructionsId) ?? null;
+  const projectItems = Object.fromEntries(projects.map((item) => [item.id, item.name]));
 
   const items = { [ACCOUNT]: "Conta (hub): listar e criar projetos", ...Object.fromEntries(projects.map((item) => [item.id, item.name])) };
 
@@ -66,14 +70,29 @@ export function McpSetup({ projects, endpoint }: McpSetupProps) {
             no arquivo do projeto de código para tornar o uso do MCP obrigatório.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {project ? (
-            <AgentsInstructions name={project.name} slug={project.slug} />
+        <CardContent className="space-y-4">
+          {projects.length === 0 ? (
+            <p className="text-sm text-muted-foreground">O texto é gerado por projeto. Crie um projeto primeiro.</p>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              O texto é gerado por projeto. Escolha um projeto em <strong>Alvo</strong> acima
-              {projects.length === 0 ? " (crie um projeto primeiro)" : ""}.
-            </p>
+            <>
+              <Field className="max-w-md">
+                <FieldLabel>Projeto</FieldLabel>
+                <Select items={projectItems} value={instructionsId} onValueChange={(value) => value && setInstructionsId(value)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldDescription>O texto e o nome do arquivo usam o projeto escolhido.</FieldDescription>
+              </Field>
+              {instructionsProject && <AgentsInstructions name={instructionsProject.name} slug={instructionsProject.slug} />}
+            </>
           )}
         </CardContent>
       </Card>

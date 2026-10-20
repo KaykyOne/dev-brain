@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import { slugify } from "@/lib/slug";
 import { MarkdownEditDialog } from "@/components/markdown/markdown-edit-dialog";
 import { MarkdownImportButton } from "@/components/skills/markdown-import-button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { createProjectSchema, type CreateProjectInput, type ProjectInput } from "@/lib/validations/project";
 
 type ProjectFormProps = {
@@ -30,9 +31,11 @@ type ProjectFormProps = {
   project?: { id: string } & ProjectInput;
   /** Skills universais, exibidas no cadastro como já incluídas. */
   universalSkills?: { id: string; name: string }[];
+  /** Skills da biblioteca que podem ser aplicadas ao projeto já na criação. */
+  librarySkills?: { id: string; name: string; description: string }[];
 };
 
-export function ProjectForm({ project, universalSkills = [] }: ProjectFormProps) {
+export function ProjectForm({ project, universalSkills = [], librarySkills = [] }: ProjectFormProps) {
   const router = useRouter();
   const {
     register,
@@ -51,6 +54,7 @@ export function ProjectForm({ project, universalSkills = [] }: ProjectFormProps)
       defaultBranch: "main",
       ...project,
       skills: [],
+      librarySkillIds: [],
     },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "skills" });
@@ -142,6 +146,43 @@ export function ProjectForm({ project, universalSkills = [] }: ProjectFormProps)
                     </Badge>
                   ))}
                 </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Da biblioteca (opcional)</p>
+              {librarySkills.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Sua biblioteca está vazia. Skills genéricas criadas em Skills poderão ser aplicadas aqui.
+                </p>
+              ) : (
+                <Controller
+                  control={control}
+                  name="librarySkillIds"
+                  render={({ field }) => (
+                    <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
+                      {librarySkills.map((skill) => (
+                        <li key={skill.id}>
+                          <label className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50">
+                            <Checkbox
+                              className="mt-0.5"
+                              checked={field.value.includes(skill.id)}
+                              onCheckedChange={(checked) =>
+                                field.onChange(
+                                  checked === true ? [...field.value, skill.id] : field.value.filter((id) => id !== skill.id),
+                                )
+                              }
+                            />
+                            <span className="min-w-0">
+                              <span className="block font-medium">{skill.name}</span>
+                              <span className="block text-xs text-muted-foreground">{skill.description}</span>
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                />
               )}
             </div>
 

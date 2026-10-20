@@ -4,6 +4,7 @@ import Link from "next/link";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
 import { RepoFiles } from "@/components/projects/repo-files";
 import { ProjectForm } from "@/components/projects/project-form";
+import { AddLibrarySkillsDialog } from "@/components/skills/add-library-skills-dialog";
 import { ImportSkillsDialog } from "@/components/skills/import-skills-dialog";
 import { SkillDialog } from "@/components/skills/skill-dialog";
 import { SkillList } from "@/components/skills/skill-list";
@@ -11,9 +12,9 @@ import { ProposalTable } from "@/components/projects/proposal-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { formatDateTime, shortSha } from "@/lib/format";
-import { getProjectDetail } from "@/lib/projects/queries";
+import { getProjectDetail, listProjects } from "@/lib/projects/queries";
 import { getRepoInfo } from "@/lib/projects/repo-info";
-import { listProjectSkills, listUniversalSkills } from "@/lib/skills/queries";
+import { listLibrarySkills, listLinkedLibrarySkills, listProjectSkills, listUniversalSkills } from "@/lib/skills/queries";
 
 export async function generateMetadata({ params }: PageProps<"/projects/[slug]">): Promise<Metadata> {
   const { slug } = await params;
@@ -24,11 +25,18 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
   const { slug } = await params;
   const user = await getCurrentUser();
   const { project, proposals, pendingCount } = await getProjectDetail(user.id, slug);
-  const [universalSkills, projectSkills, repo] = await Promise.all([
+  const [universalSkills, projectSkills, linkedSkills, librarySkills, allProjects, repo] = await Promise.all([
     listUniversalSkills(user.id),
     listProjectSkills(project.id),
+    listLinkedLibrarySkills(project.id),
+    listLibrarySkills(user.id),
+    listProjects(user.id),
     getRepoInfo(project),
   ]);
+
+  const projectRefs = allProjects.map(({ id, name }) => ({ id, name }));
+  const linkedIds = new Set(linkedSkills.map((skill) => skill.id));
+  const availableLibrary = librarySkills.filter((skill) => !linkedIds.has(skill.id));
 
   const overview = [
     ["Repositório git", repo ? "Local, sem remoto (sem push)" : "Indisponível"],
@@ -36,7 +44,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
     ["Commits", repo ? String(repo.commits) : "—"],
     ["Último commit", repo?.head ? `${shortSha(repo.head.sha)} · ${formatDateTime(repo.head.date)}` : "—"],
     ["Arquivos versionados", repo ? String(repo.files.length) : "—"],
-    ["Skills", `${universalSkills.length} universais · ${projectSkills.length} do projeto`],
+    ["Skills", `${universalSkills.length} universais · ${linkedSkills.length} da biblioteca · ${projectSkills.length} do projeto`],
     ["Alterações pendentes", String(pendingCount)],
   ];
 
@@ -89,15 +97,35 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
                 <p className="text-sm text-muted-foreground">Valem só para {project.name}.</p>
               </div>
               <div className="flex flex-wrap gap-2 sm:shrink-0">
-                <ImportSkillsDialog projectId={project.id} />
-                <SkillDialog mode="create" projectId={project.id} />
+                <ImportSkillsDialog target={project.id} />
+                <SkillDialog mode="create" target={project.id} />
               </div>
             </div>
             <SkillList
               skills={projectSkills}
               project={project}
+              allProjects={projectRefs}
               emptyTitle="Nenhuma skill específica"
               emptyDescription="Crie skills para procedimentos próprios deste projeto."
+            />
+          </section>
+          <section className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-semibold">Da biblioteca</h2>
+                <p className="text-sm text-muted-foreground">
+                  Skills genéricas aplicadas a este projeto. Edite-as em <Link href="/skills" className="underline">Skills</Link>.
+                </p>
+              </div>
+              <div className="sm:shrink-0">
+                <AddLibrarySkillsDialog projectId={project.id} projectName={project.name} available={availableLibrary} />
+              </div>
+            </div>
+            <SkillList
+              skills={linkedSkills}
+              unlinkFrom={{ id: project.id }}
+              emptyTitle="Nenhuma skill da biblioteca neste projeto"
+              emptyDescription="Aplique skills genéricas da biblioteca, como o fluxo de autodeploy, sem copiar o conteúdo."
             />
           </section>
           <section className="space-y-3">

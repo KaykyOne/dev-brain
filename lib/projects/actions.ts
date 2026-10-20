@@ -35,7 +35,7 @@ export async function createProject(input: unknown): Promise<ActionResult<{ slug
   const parsed = createProjectSchema.safeParse(input);
   if (!parsed.success) return fail("Dados inválidos", z.flattenError(parsed.error).fieldErrors);
 
-  const { skills: projectSkills, name, slug, description, defaultBranch } = parsed.data;
+  const { skills: projectSkills, librarySkillIds, name, slug, description, defaultBranch } = parsed.data;
   const values = { name, slug, description, defaultBranch };
 
   for (const skill of projectSkills) {
@@ -43,7 +43,7 @@ export async function createProject(input: unknown): Promise<ActionResult<{ slug
     if (!checked.ok) return fail("Dados inválidos", { skills: [`“${skill.name}” ${checked.message}`] });
   }
 
-  return createProjectWithRepo({ ownerId: user.id, values, skills: projectSkills });
+  return createProjectWithRepo({ ownerId: user.id, values, skills: projectSkills, librarySkillIds });
 }
 
 export async function updateProject(id: string, input: unknown): Promise<ActionResult<{ slug: string }>> {

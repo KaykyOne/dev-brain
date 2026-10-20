@@ -21,8 +21,12 @@ export function buildAgentsInstructions({ name, slug }: { name: string; slug: st
 
   return `## Contexto do projeto ${safeTitle(name)} — uso OBRIGATÓRIO do MCP \`${server}\`
 
-O contexto deste projeto (regras, skills, visão geral, tasks e notas) está no servidor MCP **\`${server}\`**.
-Ele é a **fonte da verdade**: não use cópias locais nem a memória no lugar dele.
+> **Regra inegociável:** neste projeto, a **primeira ação de toda sessão** é carregar o contexto pelo MCP \`${server}\`.
+> Isso **não é opcional**: vale para qualquer task, grande ou pequena, e não pode ser substituído por cópias locais,
+> pelo código nem pela sua memória.
+
+O contexto do projeto (regras, skills, visão geral, tasks e notas) está no servidor MCP **\`${server}\`**.
+Ele é a **fonte da verdade**.
 
 ### Antes de qualquer task (sempre, nesta ordem)
 
@@ -31,7 +35,9 @@ Ele é a **fonte da verdade**: não use cópias locais nem a memória no lugar d
 3. Chame \`list_skills\` e, para cada skill cuja descrição combine com a task, chame \`get_skill\`.
 4. Conforme o assunto da task, carregue os arquivos que o índice indicar.
 
-Só comece a alterar código depois disso. Se o contexto e o código divergirem, o código vence: avise o usuário.
+Não responda perguntas sobre o projeto nem altere código antes de concluir esses passos. Na sua primeira resposta,
+**liste os arquivos de contexto que você leu**, para que o usuário confirme que o MCP foi usado.
+Se o contexto e o código divergirem, o código vence: avise o usuário.
 
 ### Durante e depois da task
 
@@ -42,6 +48,6 @@ Só comece a alterar código depois disso. Se o contexto e o código divergirem,
 ### Se o MCP não estiver disponível
 
 Se o servidor \`${server}\` não aparecer ou uma chamada falhar, **pare e avise o usuário** antes de continuar.
-Não improvise o contexto nem siga só com o que estiver na memória.
+Não improvise o contexto. Só prossiga sem o MCP se o usuário autorizar de forma explícita, e diga que está sem contexto.
 `;
 }

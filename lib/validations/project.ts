@@ -29,7 +29,11 @@ export const projectSchema = z.object({
 
 export type ProjectInput = z.infer<typeof projectSchema>;
 
-/** Cadastro: os dados do projeto mais as skills específicas criadas junto com ele. */
-export const createProjectSchema = projectSchema.extend({ skills: skillListSchema });
+/** Cadastro: os dados do projeto, as skills específicas criadas junto com ele e as da biblioteca a aplicar. */
+export const createProjectSchema = projectSchema.extend({
+  skills: skillListSchema,
+  /** Skills da biblioteca aplicadas ao projeto desde a criação. */
+  librarySkillIds: z.array(z.uuid()).max(100),
+});
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;

@@ -23,15 +23,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { createSkill, updateSkill } from "@/lib/skills/actions";
 import { MarkdownImportButton, type ImportedSkill } from "./markdown-import-button";
-import { skillSchema, type SkillInput } from "@/lib/validations/skill";
-
-const UNIVERSAL = "universal";
+import { skillTargetItems } from "@/lib/skills/targets";
+import { SKILL_TARGET_UNIVERSAL, skillSchema, type SkillInput } from "@/lib/validations/skill";
 
 type SkillDialogProps =
   | {
       mode: "create";
-      /** Projeto fixo. `null` = universal. Ignorado quando `projects` é informado. */
-      projectId: string | null;
+      /** Destino inicial: "universal", "library" ou o id de um projeto. */
+      target: string;
       /** Quando informado, permite escolher o escopo (universal ou um projeto). */
       projects?: { id: string; name: string }[];
     }
@@ -40,9 +39,7 @@ type SkillDialogProps =
 export function SkillDialog(props: SkillDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [scope, setScope] = useState<string>(
-    props.mode === "create" ? (props.projectId ?? UNIVERSAL) : UNIVERSAL,
-  );
+  const [scope, setScope] = useState<string>(props.mode === "create" ? props.target : SKILL_TARGET_UNIVERSAL);
 
   const {
     register,
@@ -61,7 +58,7 @@ export function SkillDialog(props: SkillDialogProps) {
     const result =
       props.mode === "edit"
         ? await updateSkill(props.skill.id, values)
-        : await createSkill(scope === UNIVERSAL ? null : scope, values);
+        : await createSkill(scope, values);
 
     if (!result.ok) {
       for (const [field, messages] of Object.entries(result.fieldErrors ?? {})) {
@@ -83,10 +80,7 @@ export function SkillDialog(props: SkillDialogProps) {
     setValue("content", content, { shouldValidate: true, shouldDirty: true });
   }
 
-  const scopeItems =
-    props.mode === "create" && props.projects
-      ? { [UNIVERSAL]: "Universal (todos os projetos)", ...Object.fromEntries(props.projects.map((p) => [p.id, p.name])) }
-      : null;
+  const scopeItems = props.mode === "create" && props.projects ? skillTargetItems(props.projects) : null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -126,7 +120,10 @@ export function SkillDialog(props: SkillDialogProps) {
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldDescription>Universal vale para todos os projetos; ou escolha um projeto.</FieldDescription>
+                <FieldDescription>
+                  Universal vale para todos os projetos. Biblioteca é aplicada só aos projetos que você escolher.
+                  Ou escolha um projeto.
+                </FieldDescription>
               </Field>
             )}
             <Field data-invalid={!!errors.name}>

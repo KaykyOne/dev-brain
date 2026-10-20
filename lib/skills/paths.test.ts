@@ -18,4 +18,8 @@ describe("skillRepoPath", () => {
       "devbrain/projects/app/skills/migration/SKILL.md",
     );
   });
+
+  it("usa a pasta da biblioteca para skills compartilhadas", () => {
+    expect(skillRepoPath({ slug: "autodeploy", library: true })).toBe("devbrain/library/skills/autodeploy/SKILL.md");
+  });
 });

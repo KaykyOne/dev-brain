@@ -1,21 +1,30 @@
-# {{name}} — instruções para a IA
+## Contexto do projeto {{name}} — uso OBRIGATÓRIO do MCP `devbrain-{{slug}}`
 
-Projeto: {{name}}. O contexto vive no repositório git `context/` (ao lado dos repos de código).
+> **Regra inegociável:** neste projeto, a **primeira ação de toda sessão** é carregar o contexto pelo MCP `devbrain-{{slug}}`.
+> Isso **não é opcional**: vale para qualquer task, grande ou pequena, e não pode ser substituído por cópias locais,
+> pelo código nem pela sua memória.
 
-## Antes de qualquer task, leia (sempre)
-1. `context/skills/proibido-push.md` — NUNCA faça push.
-2. `context/skills/ia-externa.md` — zero rastro de IA nos repos de código.
-3. `context/skills/arquivos-gerados.md` — não edite lockfile/arquivo gerado na mão.
-4. `context/skills/commit-do-context.md` — toda mudança em `context/` vira commit local próprio.
-5. `context/00-base.md` — visão geral.
+O contexto do projeto (regras, skills, visão geral, tasks e notas) está no servidor MCP **`devbrain-{{slug}}`**.
+Ele é a **fonte da verdade**.
 
-## Conforme a task
-| Se a task vai... | Leia |
-| --- | --- |
-| criar branch / commitar | `context/skills/nova-task.md` |
-| mexer em código existente | `context/skills/escopo-de-refatoracao.md` |
-| tocar mais de um repo | `context/skills/registro-de-alteracoes.md` |
-| gerar descrição de PR (só se pedirem) | `context/skills/gerar-pr-md.md` |
-| qualquer assunto de área | a linha correspondente no `context/README.md` |
+### Antes de qualquer task (sempre, nesta ordem)
 
-Registre cada task em `context/tasks/` (modelo em `_modelo.md`). Se contexto e código divergirem, o código vence: avise.
+1. Chame `read_context_file` com `README.md`: é o índice, que diz quando carregar cada arquivo.
+2. Leia com `read_context_file` tudo que o índice marca como obrigatório: os arquivos de `skills/` e o `00-base.md`.
+3. Chame `list_skills` e, para cada skill cuja descrição combine com a task, chame `get_skill`.
+4. Conforme o assunto da task, carregue os arquivos que o índice indicar.
+
+Não responda perguntas sobre o projeto nem altere código antes de concluir esses passos. Na sua primeira resposta,
+**liste os arquivos de contexto que você leu**, para que o usuário confirme que o MCP foi usado.
+Se o contexto e o código divergirem, o código vence: avise o usuário.
+
+### Durante e depois da task
+
+- Registre o que aprender com `write_context_file`: a task em `tasks/` e cada descoberta em `notas/AAAA-MM-DD-assunto.md`.
+  Cada gravação vira um commit local no repositório de contexto; não existe push.
+- Para consultar o histórico, use `repo_log`. Para sugerir mudanças que dependem de revisão, use `propose_change`.
+
+### Se o MCP não estiver disponível
+
+Se o servidor `devbrain-{{slug}}` não aparecer ou uma chamada falhar, **pare e avise o usuário** antes de continuar.
+Não improvise o contexto. Só prossiga sem o MCP se o usuário autorizar de forma explícita, e diga que está sem contexto.

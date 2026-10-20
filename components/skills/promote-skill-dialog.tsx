@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { GlobeIcon, Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { MarkdownEditor } from "@/components/markdown/markdown-editor";
@@ -13,19 +13,39 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { promoteSkill } from "@/lib/skills/actions";
+import { ProjectChecklist } from "./project-checklist";
 import { promoteSkillSchema, type PromoteSkillInput } from "@/lib/validations/skill";
 
 type PromoteSkillDialogProps = {
   skill: { id: string; name: string; description: string; content: string };
   projectName?: string;
+  /** Projeto de onde a skill sai: se ela for movida para a biblioteca, ele continua com ela por aplicação. */
+  originProjectId?: string;
+  /** Todos os projetos, para escolher onde aplicar quando o destino é a biblioteca. */
+  projects: { id: string; name: string }[];
 };
 
-/** Revisa e edita uma skill de projeto antes de adicioná-la às universais. */
-export function PromoteSkillDialog({ skill, projectName }: PromoteSkillDialogProps) {
+const TARGETS = {
+  universal: "Universal: vale para todos os projetos",
+  library: "Biblioteca: aplicar só aos projetos escolhidos",
+};
+
+/** Revisa e edita uma skill de projeto antes de promovê-la a universal ou à biblioteca. */
+export function PromoteSkillDialog({ skill, projectName, originProjectId, projects }: PromoteSkillDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  const initial: PromoteSkillInput = {
+    name: skill.name,
+    description: skill.description,
+    content: skill.content,
+    keepOriginal: false,
+    target: "universal",
+    projectIds: [],
+  };
 
   const {
     register,
@@ -34,15 +54,16 @@ export function PromoteSkillDialog({ skill, projectName }: PromoteSkillDialogPro
     reset,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<PromoteSkillInput>({
-    resolver: zodResolver(promoteSkillSchema),
-    defaultValues: { name: skill.name, description: skill.description, content: skill.content, keepOriginal: false },
-  });
+  } = useForm<PromoteSkillInput>({ resolver: zodResolver(promoteSkillSchema), defaultValues: initial });
+
+  const target = useWatch({ control, name: "target" });
+  const keepOriginal = useWatch({ control, name: "keepOriginal" });
+  const others = projects.filter((project) => project.id !== originProjectId);
 
   function onOpenChange(next: boolean) {
     setOpen(next);
     // Cada abertura parte da skill atual, sem restos de uma edição cancelada.
-    if (next) reset({ name: skill.name, description: skill.description, content: skill.content, keepOriginal: false });
+    if (next) reset(initial);
   }
 
   async function onSubmit(values: PromoteSkillInput) {
@@ -56,7 +77,7 @@ export function PromoteSkillDialog({ skill, projectName }: PromoteSkillDialogPro
       return;
     }
 
-    toast.success("Skill adicionada às universais");
+    toast.success(values.target === "library" ? "Skill enviada para a biblioteca" : "Skill adicionada às universais");
     setOpen(false);
     router.refresh();
   }
@@ -64,21 +85,43 @@ export function PromoteSkillDialog({ skill, projectName }: PromoteSkillDialogPro
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger
-        render={<Button variant="ghost" size="icon-sm" aria-label={`Tornar ${skill.name} universal`} title="Tornar universal" />}
+        render={<Button variant="ghost" size="icon-sm" aria-label={`Promover ${skill.name}`} title="Promover: universal ou biblioteca" />}
       >
         <GlobeIcon />
       </DialogTrigger>
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Tornar universal</DialogTitle>
+          <DialogTitle>Promover skill</DialogTitle>
           <DialogDescription>
-            {projectName ? `Skill de ${projectName}. ` : ""}Ajuste o que for preciso: ao confirmar, ela passa a valer para
-            todos os projetos.
+            {projectName ? `Skill de ${projectName}. ` : ""}Ajuste o que for preciso e escolha o destino: universal (todos
+            os projetos) ou biblioteca (só os projetos que você escolher).
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <FieldGroup>
+            <Field>
+              <FieldLabel>Destino</FieldLabel>
+              <Controller
+                control={control}
+                name="target"
+                render={({ field }) => (
+                  <Select items={TARGETS} value={field.value} onValueChange={(value) => value && field.onChange(value)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(TARGETS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+
             <Field data-invalid={!!errors.name}>
               <FieldLabel htmlFor="promote-name">Nome</FieldLabel>
               <Input id="promote-name" aria-invalid={!!errors.name} {...register("name")} />
@@ -109,6 +152,22 @@ export function PromoteSkillDialog({ skill, projectName }: PromoteSkillDialogPro
               <FieldError errors={[errors.content]} />
             </Field>
 
+            {target === "library" && (
+              <Field>
+                <FieldLabel>Aplicar também em</FieldLabel>
+                <Controller
+                  control={control}
+                  name="projectIds"
+                  render={({ field }) => <ProjectChecklist projects={others} value={field.value} onChange={field.onChange} />}
+                />
+                <FieldDescription>
+                  {keepOriginal
+                    ? "A skill também continua no projeto de origem, como cópia própria."
+                    : `${projectName ?? "O projeto de origem"} continua com a skill, agora aplicada a partir da biblioteca.`}
+                </FieldDescription>
+              </Field>
+            )}
+
             <Controller
               control={control}
               name="keepOriginal"
@@ -116,9 +175,9 @@ export function PromoteSkillDialog({ skill, projectName }: PromoteSkillDialogPro
                 <label className="flex items-start gap-2 text-sm">
                   <Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} />
                   <span>
-                    Manter também no projeto
+                    Manter também a cópia no projeto
                     <FieldDescription>
-                      Desmarcado, a skill é movida: sai do projeto e fica apenas como universal.
+                      Desmarcado, a skill é movida: sai do projeto e passa a existir só no destino escolhido.
                     </FieldDescription>
                   </span>
                 </label>
@@ -131,7 +190,7 @@ export function PromoteSkillDialog({ skill, projectName }: PromoteSkillDialogPro
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2Icon className="animate-spin" />}
-                Adicionar às universais
+                {target === "library" ? "Enviar para a biblioteca" : "Adicionar às universais"}
               </Button>
             </div>
           </FieldGroup>

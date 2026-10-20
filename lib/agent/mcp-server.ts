@@ -13,7 +13,12 @@ import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { createProjectWithRepo } from "@/lib/projects/create";
 import { findSecrets } from "@/lib/security/secrets";
-import { findSkillForProject, listProjectSkills, listUniversalSkills } from "@/lib/skills/queries";
+import {
+  findSkillForProject,
+  listLinkedLibrarySkills,
+  listProjectSkills,
+  listUniversalSkills,
+} from "@/lib/skills/queries";
 import { skillRepoPath } from "@/lib/skills/paths";
 import { slugify, SLUG_PATTERN } from "@/lib/slug";
 
@@ -45,8 +50,8 @@ async function guard(task: () => Promise<CallToolResult>): Promise<CallToolResul
 const INSTRUCTIONS =
   "DevBrain é um hub de repositórios git de contexto de projetos, todos no mesmo padrão (README com índice " +
   "'quando carregar', 00-base.md, skills/, tasks/, notas/, templates-pr/, raiz/). " +
-  "Com token de projeto: leia skills/ e 00-base.md antes de alterar código (read_context_file) e registre o que " +
-  "aprender com write_context_file, que cria um commit local por gravação (push não existe). " +
+  "Com token de projeto: ANTES de alterar código, é OBRIGATÓRIO ler README.md, skills/ e 00-base.md (read_context_file) " +
+  "e registrar o que aprender com write_context_file, que cria um commit local por gravação (push não existe). " +
   "Com token de conta: list_projects e create_project iniciam um novo repositório já no padrão.";
 
 /** Cria um servidor MCP isolado por requisição: ferramentas de projeto ou de conta, conforme o token. */
@@ -303,30 +308,30 @@ function registerProjectTools(
     {
       title: "Listar skills",
       description:
-        "Lista as skills cadastradas no DevBrain que valem para este projeto: as universais (todos os projetos) e as " +
-        "específicas dele. As regras do próprio repositório ficam em skills/ (list_context_files).",
+        "Lista as skills cadastradas no DevBrain que valem para este projeto: as universais (todos os projetos), as da " +
+        "biblioteca aplicadas a ele e as específicas dele (scope: universal | library | project). As regras do próprio " +
+        "repositório ficam em skills/ (list_context_files).",
       annotations: { readOnlyHint: true },
     },
     async () => {
       const denied = requireScope("context:read");
       if (denied) return denied;
 
-      const [universal, specific] = await Promise.all([
+      const [universal, library, specific] = await Promise.all([
         listUniversalSkills(project.ownerId),
+        listLinkedLibrarySkills(project.id),
         listProjectSkills(project.id),
       ]);
 
-      const toEntry = (skill: (typeof universal)[number], scoped: boolean) => ({
+      const toEntry = (skill: (typeof universal)[number]) => ({
         name: skill.name,
         slug: skill.slug,
         description: skill.description,
-        scope: scoped ? "project" : "universal",
-        path: skillRepoPath({ slug: skill.slug, project: scoped ? project : null }),
+        scope: skill.scope,
+        path: skillRepoPath({ slug: skill.slug, project: skill.scope === "project" ? project : null, library: skill.scope === "library" }),
       });
 
-      return json({
-        skills: [...universal.map((skill) => toEntry(skill, false)), ...specific.map((skill) => toEntry(skill, true))],
-      });
+      return json({ skills: [...universal, ...library, ...specific].map(toEntry) });
     },
   );
 
@@ -335,8 +340,9 @@ function registerProjectTools(
     {
       title: "Ler uma skill",
       description:
-        "Retorna o SKILL.md completo de uma skill cadastrada (universal ou deste projeto), pelo slug obtido em list_skills. " +
-        "Se houver uma skill do projeto com o mesmo slug de uma universal, a do projeto prevalece.",
+        "Retorna o SKILL.md completo de uma skill cadastrada (universal, da biblioteca ou deste projeto), pelo slug obtido " +
+        "em list_skills. Com o mesmo slug em mais de um escopo, prevalece a mais específica: projeto, depois biblioteca, " +
+        "depois universal.",
       inputSchema: { slug: z.string().min(1).max(100) },
       annotations: { readOnlyHint: true },
     },
@@ -351,7 +357,7 @@ function registerProjectTools(
         name: skill.name,
         slug: skill.slug,
         description: skill.description,
-        scope: skill.projectId ? "project" : "universal",
+        scope: skill.scope,
         content: skill.content,
       });
     },

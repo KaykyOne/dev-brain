@@ -1,0 +1,281 @@
+{
+  "version": 1,
+  "_comment": "Ações que o assistente de IA pode executar. enabled liga/desliga a ação; confirm exige aprovação do usuário no chat antes de executar; mutates marca ações que alteram dados. Cada ação precisa de um handler em handlers.ts (um teste confere).",
+  "actions": [
+    {
+      "name": "list_projects",
+      "label": "Listar projetos",
+      "description": "Lista os projetos do usuário (slug, nome, descrição). Use para descobrir os slugs antes de qualquer outra ação.",
+      "enabled": true,
+      "mutates": false,
+      "confirm": false,
+      "parameters": { "type": "object", "properties": {}, "additionalProperties": false },
+      "example": {}
+    },
+    {
+      "name": "get_project",
+      "label": "Ver projeto",
+      "description": "Mostra um projeto: descrição, branch, arquivos do repositório de contexto, último commit e quantas skills ele usa.",
+      "enabled": true,
+      "mutates": false,
+      "confirm": false,
+      "parameters": {
+        "type": "object",
+        "properties": { "slug": { "type": "string", "description": "Slug do projeto (ex.: tele-visao)" } },
+        "required": ["slug"],
+        "additionalProperties": false
+      },
+      "example": { "slug": "tele-visao" }
+    },
+    {
+      "name": "list_skills",
+      "label": "Listar skills",
+      "description": "Lista skills sem o conteúdo (slug, escopo, descrição, projeto, se tem SKILL.md). Escopos: universal (todos os projetos), library (biblioteca, aplicada a projetos escolhidos) e project (de um projeto). Filtros opcionais.",
+      "enabled": true,
+      "mutates": false,
+      "confirm": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "scope": { "type": "string", "enum": ["universal", "library", "project"], "description": "Filtra por escopo" },
+          "project": { "type": "string", "description": "Slug do projeto: lista as skills que valem para ele (de projeto, da biblioteca aplicadas e universais)" },
+          "query": { "type": "string", "description": "Texto buscado no nome, na descrição e no conteúdo" }
+        },
+        "additionalProperties": false
+      },
+      "example": { "scope": "library", "query": "deploy" }
+    },
+    {
+      "name": "get_skill",
+      "label": "Ler skill",
+      "description": "Lê uma skill completa, incluindo o SKILL.md. Para skills de projeto informe o slug do projeto.",
+      "enabled": true,
+      "mutates": false,
+      "confirm": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slug": { "type": "string", "description": "Slug da skill" },
+          "scope": { "type": "string", "enum": ["universal", "library", "project"] },
+          "project": { "type": "string", "description": "Slug do projeto (obrigatório quando scope é project)" }
+        },
+        "required": ["slug", "scope"],
+        "additionalProperties": false
+      },
+      "example": { "slug": "autodeploy", "scope": "library" }
+    },
+    {
+      "name": "list_context_files",
+      "label": "Listar arquivos de contexto",
+      "description": "Lista os arquivos versionados no repositório de contexto de um projeto.",
+      "enabled": true,
+      "mutates": false,
+      "confirm": false,
+      "parameters": {
+        "type": "object",
+        "properties": { "project": { "type": "string", "description": "Slug do projeto" } },
+        "required": ["project"],
+        "additionalProperties": false
+      },
+      "example": { "project": "tele-visao" }
+    },
+    {
+      "name": "read_context_file",
+      "label": "Ler arquivo de contexto",
+      "description": "Lê um arquivo do repositório de contexto de um projeto (ex.: README.md, 00-base.md, skills/nova-task.md).",
+      "enabled": true,
+      "mutates": false,
+      "confirm": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project": { "type": "string", "description": "Slug do projeto" },
+          "path": { "type": "string", "description": "Caminho relativo à raiz do repositório" }
+        },
+        "required": ["project", "path"],
+        "additionalProperties": false
+      },
+      "example": { "project": "tele-visao", "path": "README.md" }
+    },
+    {
+      "name": "create_skill",
+      "label": "Criar skill",
+      "description": "Cria uma skill. O conteúdo é o SKILL.md em Markdown (de preferência com frontmatter name/description). Use scope library para skills genéricas reutilizáveis, universal para as que valem para todos os projetos e project para as de um projeto (informe project).",
+      "enabled": true,
+      "mutates": true,
+      "confirm": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Nome da skill (gera o slug)" },
+          "description": { "type": "string", "description": "Quando usar: uma instrução de gatilho curta que o agente lê para decidir aplicar a skill (até 500 caracteres)" },
+          "content": { "type": "string", "description": "Conteúdo do SKILL.md em Markdown" },
+          "scope": { "type": "string", "enum": ["universal", "library", "project"] },
+          "project": { "type": "string", "description": "Slug do projeto (obrigatório quando scope é project)" }
+        },
+        "required": ["name", "description", "scope"],
+        "additionalProperties": false
+      },
+      "example": { "name": "Autodeploy", "description": "Use para publicar na VPS", "content": "# Autodeploy\n\nRode o dry-run antes.", "scope": "library" }
+    },
+    {
+      "name": "update_skill",
+      "label": "Atualizar skill",
+      "description": "Altera nome, descrição e/ou conteúdo de uma skill existente. Envie só o que muda; para o conteúdo envie o SKILL.md completo já com a alteração (leia a skill antes). O slug não muda.",
+      "enabled": true,
+      "mutates": true,
+      "confirm": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slug": { "type": "string", "description": "Slug da skill" },
+          "scope": { "type": "string", "enum": ["universal", "library", "project"] },
+          "project": { "type": "string", "description": "Slug do projeto (obrigatório quando scope é project)" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "content": { "type": "string", "description": "SKILL.md completo, já com as alterações" }
+        },
+        "required": ["slug", "scope"],
+        "additionalProperties": false
+      },
+      "example": { "slug": "autodeploy", "scope": "library", "description": "Novo gatilho" }
+    },
+    {
+      "name": "apply_library_skill",
+      "label": "Aplicar skill da biblioteca",
+      "description": "Aplica (ou remove) uma skill da biblioteca em projetos, sem copiar o conteúdo. mode add soma aos projetos atuais, remove tira só os informados e set substitui a lista inteira.",
+      "enabled": true,
+      "mutates": true,
+      "confirm": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slug": { "type": "string", "description": "Slug da skill da biblioteca" },
+          "projects": { "type": "array", "items": { "type": "string" }, "description": "Slugs dos projetos" },
+          "mode": { "type": "string", "enum": ["add", "remove", "set"] }
+        },
+        "required": ["slug", "projects", "mode"],
+        "additionalProperties": false
+      },
+      "example": { "slug": "autodeploy", "projects": ["tele-visao"], "mode": "add" }
+    },
+    {
+      "name": "promote_skill",
+      "label": "Promover skill",
+      "description": "Promove uma skill de projeto para universal ou para a biblioteca. Pode ajustar nome, descrição e conteúdo na promoção. Na biblioteca, 'projects' são os outros projetos onde aplicar; o projeto de origem continua com a skill se ela for movida.",
+      "enabled": true,
+      "mutates": true,
+      "confirm": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slug": { "type": "string", "description": "Slug da skill de projeto" },
+          "project": { "type": "string", "description": "Slug do projeto de origem" },
+          "target": { "type": "string", "enum": ["universal", "library"] },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "content": { "type": "string" },
+          "projects": { "type": "array", "items": { "type": "string" }, "description": "Outros projetos onde aplicar (destino library)" },
+          "keep_original": { "type": "boolean", "description": "Mantém uma cópia no projeto de origem (padrão: false, a skill é movida)" }
+        },
+        "required": ["slug", "project", "target"],
+        "additionalProperties": false
+      },
+      "example": { "slug": "revisar-pr", "project": "tele-visao", "target": "library", "projects": ["outro"] }
+    },
+    {
+      "name": "create_project",
+      "label": "Criar projeto",
+      "description": "Cria um projeto e o seu repositório git de contexto no padrão do hub. Opcionalmente já aplica skills da biblioteca.",
+      "enabled": true,
+      "mutates": true,
+      "confirm": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "slug": { "type": "string", "description": "Opcional: gerado a partir do nome. Letras minúsculas, números e hífens" },
+          "description": { "type": "string" },
+          "library_skills": { "type": "array", "items": { "type": "string" }, "description": "Slugs de skills da biblioteca a aplicar" }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      },
+      "example": { "name": "Loja Nova", "description": "E-commerce", "library_skills": ["autodeploy"] }
+    },
+    {
+      "name": "update_project",
+      "label": "Atualizar projeto",
+      "description": "Altera nome, descrição ou branch principal de um projeto. O slug não muda.",
+      "enabled": true,
+      "mutates": true,
+      "confirm": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slug": { "type": "string", "description": "Slug do projeto" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "default_branch": { "type": "string" }
+        },
+        "required": ["slug"],
+        "additionalProperties": false
+      },
+      "example": { "slug": "tele-visao", "description": "Sistema de telemedicina" }
+    },
+    {
+      "name": "write_context_file",
+      "label": "Gravar arquivo de contexto",
+      "description": "Cria ou substitui um arquivo Markdown/texto no repositório de contexto de um projeto e faz um commit local (sem push). Envie o arquivo completo. Leia o arquivo antes de alterá-lo.",
+      "enabled": true,
+      "mutates": true,
+      "confirm": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project": { "type": "string", "description": "Slug do projeto" },
+          "path": { "type": "string", "description": "Caminho relativo, ex.: notas/2026-10-18-cache.md" },
+          "content": { "type": "string", "description": "Conteúdo completo do arquivo" },
+          "message": { "type": "string", "description": "Mensagem do commit, uma linha" }
+        },
+        "required": ["project", "path", "content", "message"],
+        "additionalProperties": false
+      },
+      "example": { "project": "tele-visao", "path": "notas/exemplo.md", "content": "# Nota", "message": "docs: nota de exemplo" }
+    },
+    {
+      "name": "delete_skill",
+      "label": "Remover skill",
+      "description": "Remove uma skill. Ação destrutiva: o usuário precisa aprovar no chat. Remover da biblioteca tira a skill de todos os projetos.",
+      "enabled": true,
+      "mutates": true,
+      "confirm": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slug": { "type": "string", "description": "Slug da skill" },
+          "scope": { "type": "string", "enum": ["universal", "library", "project"] },
+          "project": { "type": "string", "description": "Slug do projeto (obrigatório quando scope é project)" }
+        },
+        "required": ["slug", "scope"],
+        "additionalProperties": false
+      },
+      "example": { "slug": "autodeploy", "scope": "library" }
+    },
+    {
+      "name": "delete_project",
+      "label": "Remover projeto",
+      "description": "Remove um projeto e seus dados do DevBrain (o repositório git vai para a lixeira, não é apagado). Ação destrutiva: o usuário precisa aprovar no chat.",
+      "enabled": true,
+      "mutates": true,
+      "confirm": true,
+      "parameters": {
+        "type": "object",
+        "properties": { "slug": { "type": "string", "description": "Slug do projeto" } },
+        "required": ["slug"],
+        "additionalProperties": false
+      },
+      "example": { "slug": "projeto-antigo" }
+    }
+  ]
+}

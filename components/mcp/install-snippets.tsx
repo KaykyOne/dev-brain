@@ -45,6 +45,7 @@ export function InstallSnippets({ endpoint, token, projectSlug }: InstallSnippet
   );
 
   const codexEnv = `export ${tokenVar}="${value}"`;
+  const codexCommand = `codex mcp add ${server} --url ${endpoint} \\\n  --bearer-token-env-var ${tokenVar}`;
   const codexConfig = `[mcp_servers.${server}]\nurl = "${endpoint}"\nbearer_token_env_var = "${tokenVar}"`;
 
   return (
@@ -77,10 +78,24 @@ export function InstallSnippets({ endpoint, token, projectSlug }: InstallSnippet
       <TabsContent value="codex" className="space-y-4 pt-4">
         <Snippet
           title="Exporte o token"
-          hint="Adicione ao ~/.bashrc ou ~/.zshrc para persistir."
+          hint="O Codex lê o token desta variável de ambiente: ele não fica no arquivo. Adicione ao ~/.bashrc ou ~/.zshrc para persistir."
           code={codexEnv}
         />
-        <Snippet title="Adicione ao ~/.codex/config.toml" code={codexConfig} />
+        <Snippet
+          title="Adicionar o servidor"
+          hint="Rode no terminal, no mesmo shell em que a variável foi exportada. Grava em ~/.codex/config.toml e vale para o CLI, a extensão de IDE e o app."
+          code={codexCommand}
+        />
+        <Snippet title="Verificar" hint="Dentro do Codex, /mcp também mostra o estado." code={`codex mcp list\ncodex mcp get ${server}`} />
+        <Snippet
+          title="Ou edite o config.toml"
+          hint={
+            isProject
+              ? "Equivalente ao comando. Para valer só neste projeto, use .codex/config.toml na raiz do projeto de código (só funciona em projetos confiáveis)."
+              : "Equivalente ao comando, em ~/.codex/config.toml."
+          }
+          code={codexConfig}
+        />
       </TabsContent>
     </Tabs>
   );

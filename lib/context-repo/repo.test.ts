@@ -57,6 +57,14 @@ describe("initRepo", () => {
     expect(await readFile(join(dir, "00-base.md"), "utf8")).toContain("Um projeto de teste");
   });
 
+  it("gera o raiz/AGENTS.md que obriga o uso do MCP do projeto", async () => {
+    const agents = await readFile(join(dir, "raiz/AGENTS.md"), "utf8");
+    expect(agents).toContain("OBRIGATÓRIO");
+    expect(agents).toContain("devbrain-projeto-teste");
+    expect(agents).toContain("Projeto Teste");
+    expect(agents).not.toContain("{{");
+  });
+
   it("adota um repositório existente sem recriar", async () => {
     const result = await initRepo({ root, templateDir, vars, branch: "main" });
     expect(result.created).toBe(false);

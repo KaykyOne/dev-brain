@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { buildAgentsInstructions, instructionsFileName, mcpServerName, tokenEnvVar } from "./instructions";
@@ -35,6 +37,12 @@ describe("buildAgentsInstructions", () => {
     }
   });
 
+  it("torna o MCP a primeira ação e exige prova de uso", () => {
+    expect(text).toContain("primeira ação de toda sessão");
+    expect(text).toContain("não é opcional");
+    expect(text).toMatch(/liste os arquivos de contexto que você leu/);
+  });
+
   it("manda parar quando o MCP não estiver disponível", () => {
     expect(text).toMatch(/pare e avise o usuário/);
   });
@@ -46,5 +54,20 @@ describe("buildAgentsInstructions", () => {
 
   it("não deixa marcadores sem preencher", () => {
     expect(text).not.toMatch(/\{\{|<SEU|undefined/);
+  });
+});
+
+describe("template raiz/AGENTS.md", () => {
+  // O hub copia este arquivo para cada projeto novo. Ele precisa ser idêntico ao texto gerado na aba MCP.
+  it("é o mesmo texto gerado por buildAgentsInstructions", () => {
+    const template = readFileSync(join(process.cwd(), "templates/context/raiz/AGENTS.md"), "utf8");
+    const rendered = template.replaceAll("{{name}}", "Tele.visão").replaceAll("{{slug}}", "tele-visao");
+
+    expect(rendered).toBe(buildAgentsInstructions({ name: "Tele.visão", slug: "tele-visao" }));
+  });
+
+  it("não deixa marcadores desconhecidos", () => {
+    const template = readFileSync(join(process.cwd(), "templates/context/raiz/AGENTS.md"), "utf8");
+    expect(template.match(/\{\{(\w+)\}\}/g)?.every((marker) => ["{{name}}", "{{slug}}"].includes(marker))).toBe(true);
   });
 });
