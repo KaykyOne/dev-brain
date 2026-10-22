@@ -1,10 +1,22 @@
+import { join } from "node:path";
+
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+
+import { db } from "@/db";
 import { ensureAdminUser } from "@/lib/auth/bootstrap";
 import { checkContextRepos } from "@/lib/context-repo/health";
 import { basePath, env } from "@/lib/env";
 import { logger, pruneLogs } from "@/lib/logger";
 
-/** Tarefas executadas uma vez quando o servidor sobe. Falhas são registradas, nunca derrubam o servidor. */
+/** Tarefas executadas uma vez quando o servidor sobe (a primeira aplica as migrations pendentes). Falhas são registradas, nunca derrubam o servidor. */
 export async function startup() {
+  // Antes de tudo: as demais tarefas e os logs dependem do schema atualizado.
+  try {
+    await migrate(db, { migrationsFolder: join(process.cwd(), "db", "migrations") });
+  } catch (error) {
+    await logger.error("startup", "Falha ao aplicar as migrations do banco", { error });
+  }
+
   const { dir, problems } = await checkContextRepos(env.CONTEXT_REPOS_DIR);
 
   if (problems.length > 0) {

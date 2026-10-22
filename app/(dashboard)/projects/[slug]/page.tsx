@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { ProjectActiveToggle } from "@/components/projects/project-active-toggle";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
 import { CommitList } from "@/components/projects/commit-list";
 import { RepoFiles } from "@/components/projects/repo-files";
@@ -10,7 +11,9 @@ import { ImportSkillsDialog } from "@/components/skills/import-skills-dialog";
 import { SkillDialog } from "@/components/skills/skill-dialog";
 import { SkillList } from "@/components/skills/skill-list";
 import { ProposalTable } from "@/components/projects/proposal-table";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { contextRepos } from "@/lib/context-repo";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { formatDateTime, shortSha } from "@/lib/format";
 import { getProjectDetail, listProjects } from "@/lib/projects/queries";
@@ -22,8 +25,11 @@ export async function generateMetadata({ params }: PageProps<"/projects/[slug]">
   return { title: slug };
 }
 
-export default async function ProjectPage({ params }: PageProps<"/projects/[slug]">) {
+const TABS = ["overview", "files", "commits", "skills", "changes", "settings"];
+
+export default async function ProjectPage({ params, searchParams }: PageProps<"/projects/[slug]">) {
   const { slug } = await params;
+  const { tab } = await searchParams;
   const user = await getCurrentUser();
   const { project, proposals, pendingCount } = await getProjectDetail(user.id, slug);
   const [universalSkills, projectSkills, linkedSkills, librarySkills, allProjects, repo, history] = await Promise.all([
@@ -36,6 +42,16 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
     getCommitHistory(project),
   ]);
 
+  const currentContents: Record<string, string> = {};
+  await Promise.all(
+    proposals
+      .filter((proposal) => proposal.status === "pending")
+      .map(async ({ filePath }) => {
+        const file = await contextRepos.read(project.slug, filePath).catch(() => null);
+        if (file) currentContents[filePath] = file.content;
+      }),
+  );
+
   const projectRefs = allProjects.map(({ id, name }) => ({ id, name }));
   const linkedIds = new Set(linkedSkills.map((skill) => skill.id));
   const availableLibrary = librarySkills.filter((skill) => !linkedIds.has(skill.id));
@@ -47,6 +63,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
     ["Último commit", repo?.head ? `${shortSha(repo.head.sha)} · ${formatDateTime(repo.head.date)}` : "—"],
     ["Arquivos versionados", repo ? String(repo.files.length) : "—"],
     ["Skills", `${universalSkills.length} universais · ${linkedSkills.length} da biblioteca · ${projectSkills.length} do projeto`],
+    ["Status", project.active ? "Ativo" : "Desativado"],
     ["Alterações pendentes", String(pendingCount)],
   ];
 
@@ -55,12 +72,13 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
+          {!project.active && <Badge variant="outline">Desativado</Badge>}
         </div>
         <p className="font-mono text-xs text-muted-foreground">{project.slug}</p>
         {project.description && <p className="max-w-2xl text-sm text-muted-foreground">{project.description}</p>}
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue={typeof tab === "string" && TABS.includes(tab) ? tab : "overview"}>
         {/* Rolagem horizontal: 7 abas não cabem em telas estreitas. */}
         <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
           <TabsList className="w-max">
@@ -150,7 +168,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
           </section>
         </TabsContent>
         <TabsContent value="changes" className="pt-4">
-          <ProposalTable proposals={proposals} />
+          <ProposalTable proposals={proposals} currentContents={currentContents} />
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-8 pt-4">
@@ -164,6 +182,15 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
               defaultBranch: project.defaultBranch,
             }}
           />
+          <div className="max-w-xl space-y-3 rounded-lg border p-4">
+            <div>
+              <p className="font-medium">Status do projeto</p>
+              <p className="text-sm text-muted-foreground">
+                Projetos desativados ficam indisponíveis no MCP: o agente é avisado para pedir a reativação.
+              </p>
+            </div>
+            <ProjectActiveToggle id={project.id} active={project.active} />
+          </div>
           <div className="max-w-xl space-y-3 rounded-lg border border-destructive/30 p-4">
             <div>
               <p className="font-medium">Zona de perigo</p>

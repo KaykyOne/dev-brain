@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { logActivity } from "@/lib/activity";
+import { logger } from "@/lib/logger";
 import { verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { loginSchema } from "@/lib/validations/auth";
@@ -27,10 +29,12 @@ export async function POST(request: Request) {
 
   const valid = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
   if (!user || !valid) {
+    await logger.warn("auth", "Tentativa de login recusada", { details: { email } });
     return NextResponse.json({ error: "E-mail ou senha incorretos" }, { status: 401 });
   }
 
   await createSession(user.id);
+  await logActivity({ action: "auth.login", actorId: user.id, metadata: { email } });
 
   return NextResponse.json({ user: { id: user.id, name: user.name, email: user.email } });
 }

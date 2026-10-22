@@ -70,7 +70,7 @@ Na inicialização o app garante o usuário único (`ADMIN_EMAIL`): se não exis
 (padrão `Senha123?`); se existir, nada é alterado. Troque a senha em **Perfil** após o primeiro acesso.
 
 Scripts úteis: `npm test` (Vitest), `npm run typecheck`, `npm run lint`.
-Após alterar o schema: `npm run db:generate && npm run db:migrate`.
+Após alterar o schema: `npm run db:generate`. As migrations pendentes são aplicadas automaticamente quando o app inicia (`npm run dev` ou `start`); `npm run db:migrate` continua disponível para rodar manualmente.
 
 ## Conectando um agente (MCP)
 

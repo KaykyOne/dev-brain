@@ -37,7 +37,11 @@ export async function POST(request: Request) {
   const ctx = { userId: user.id };
   const deps: AgentDeps = {
     chat: (messages) => streamChat({ config, messages, tools: toolDefinitions(), signal: request.signal }),
-    execute: (name, args) => HANDLERS[name].run(args as never, ctx),
+    execute: async (name, args) => {
+      const outcome = await HANDLERS[name].run(args as never, ctx);
+      await logger.info("assistant", `Assistente executou ${name}`, { details: { ferramenta: name, ator: user.id, ok: outcome.ok } });
+      return outcome;
+    },
     preview: async (name, args) => HANDLERS[name].preview?.(args as never, ctx),
     onError: (message, error) =>
       logger.error("assistant", message, {

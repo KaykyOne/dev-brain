@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   check,
   index,
   jsonb,
@@ -74,6 +75,8 @@ export const projects = pgTable(
     // Caminho do projeto dentro do repositório, relativo à raiz (ex.: devbrain/projects/meu-projeto).
     repositoryPath: text("repository_path"),
     defaultBranch: text("default_branch").notNull().default("main"),
+    // Projeto desativado: o MCP avisa o agente para reativá-lo em vez de atender as ferramentas.
+    active: boolean("active").notNull().default(true),
     syncStatus: syncStatus("sync_status").notNull().default("never"),
     lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
     ...timestamps,
@@ -234,6 +237,28 @@ export const appLogs = pgTable(
   ],
 );
 
+// Avisos internos para o dono da conta (ex.: agente pediu aprovação), exibidos no sino do cabeçalho.
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
+    // Tipo do aviso (ex.: "proposal.created", "project.inactive_access"), usado para evitar repetição.
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull().default(""),
+    // Para onde o clique leva (caminho interno, sem basePath).
+    href: text("href"),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("notifications_owner_created_idx").on(table.ownerId, table.createdAt)],
+);
+
+export type Notification = typeof notifications.$inferSelect;
 export type AppLog = typeof appLogs.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Skill = typeof skills.$inferSelect;

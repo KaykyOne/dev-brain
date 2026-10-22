@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { changeProposals, contextFiles } from "@/db/schema";
 import { logActivity } from "@/lib/activity";
+import { notify } from "@/lib/notifications";
 import { normalizeRelativePath } from "@/lib/security/paths";
 import { findSecrets } from "@/lib/security/secrets";
 
@@ -79,6 +80,15 @@ export async function createAgentProposal(
     action: "proposal.created",
     projectId,
     metadata: { filePath, source: `agent:${context.tokenName}` },
+  });
+
+  await notify({
+    ownerId: context.ownerId,
+    projectId,
+    kind: "proposal.created",
+    title: "IA solicitou aprovação",
+    body: `${context.project.name}: ${filePath} — ${input.reason}`.slice(0, 300),
+    href: `/projects/${context.project.slug}?tab=changes`,
   });
 
   return { ok: true, id: proposal.id, status: proposal.status, duplicate: false };

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { logActivity } from "@/lib/activity";
 import { fail, type ActionResult } from "@/lib/action-result";
 import { createRateLimiter } from "@/lib/security/rate-limit";
 import { changePasswordSchema } from "@/lib/validations/auth";
@@ -40,6 +41,7 @@ export async function changePassword(input: unknown): Promise<ActionResult> {
 
   // Outros dispositivos precisam entrar de novo com a nova senha.
   await destroyOtherSessions(user.id);
+  await logActivity({ action: "auth.password_changed", actorId: user.id });
 
   return { ok: true, data: undefined };
 }

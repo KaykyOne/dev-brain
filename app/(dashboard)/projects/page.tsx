@@ -50,7 +50,10 @@ export default async function ProjectsPage() {
               <Link key={project.id} href={`/projects/${project.slug}`} className="group">
                 <Card className="h-full transition-colors group-hover:bg-muted/50">
                   <CardHeader>
-                    <CardTitle>{project.name}</CardTitle>
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle>{project.name}</CardTitle>
+                      {!project.active && <Badge variant="outline">Desativado</Badge>}
+                    </div>
                     <CardDescription className="font-mono text-xs">{project.slug}</CardDescription>
                     {project.description && (
                       <p className="line-clamp-2 text-sm text-muted-foreground">{project.description}</p>

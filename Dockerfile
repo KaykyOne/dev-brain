@@ -33,6 +33,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # Template dos repositórios de contexto (lido em tempo de execução).
 COPY --from=builder --chown=nextjs:nodejs /app/templates ./templates
+# Migrations, aplicadas pelo app ao iniciar (lib/startup.ts).
+COPY --from=builder --chown=nextjs:nodejs /app/db/migrations ./db/migrations
 USER nextjs
 EXPOSE 3000
 CMD ["node", "server.js"]

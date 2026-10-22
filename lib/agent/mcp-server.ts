@@ -56,10 +56,24 @@ const INSTRUCTIONS =
 
 /** Cria um servidor MCP isolado por requisição: ferramentas de projeto ou de conta, conforme o token. */
 export function createMcpServer(context: AgentContext) {
-  const server = new McpServer({ name: "devbrain", version: "0.2.0" }, { instructions: INSTRUCTIONS });
+  const disabled = context.project && !context.project.active;
+  const instructions = disabled
+    ? `ATENÇÃO: o projeto "${context.project?.name}" está DESATIVADO no DevBrain. Nenhuma ferramenta funcionará até o ` +
+      "usuário reativá-lo em Configurações do projeto. Informe isso ao usuário. " + INSTRUCTIONS
+    : INSTRUCTIONS;
+  const server = new McpServer({ name: "devbrain", version: "0.2.0" }, { instructions });
 
-  const requireScope = (scope: AgentScope) =>
-    context.scopes.includes(scope) ? null : error(`O token não possui o escopo "${scope}".`);
+  // Projeto desativado: toda ferramenta responde com o aviso, para o agente orientar o usuário a reativá-lo.
+  const requireScope = (scope: AgentScope) => {
+    if (context.project && !context.project.active) {
+      return error(
+        `O projeto "${context.project.name}" está desativado no DevBrain. Avise o usuário para reativá-lo ` +
+          `(Projetos → ${context.project.name} → Configurações → Ativar projeto) e só então tente de novo. ` +
+          "Não prossiga sem o contexto do projeto.",
+      );
+    }
+    return context.scopes.includes(scope) ? null : error(`O token não possui o escopo "${scope}".`);
+  };
 
   if (context.project) registerProjectTools(server, context, context.project, requireScope);
   else registerAccountTools(server, context, requireScope);
@@ -74,7 +88,7 @@ function registerAccountTools(server: McpServer, context: AgentContext, requireS
     "list_projects",
     {
       title: "Listar projetos do hub",
-      description: "Lista os projetos (repositórios de contexto) da conta, com slug e descrição.",
+      description: "Lista os projetos (repositórios de contexto) da conta, com slug, descrição e se está ativo (active). Projetos desativados não atendem ferramentas até serem reativados.",
       annotations: { readOnlyHint: true },
     },
     async () => {
@@ -87,6 +101,7 @@ function registerAccountTools(server: McpServer, context: AgentContext, requireS
           slug: projects.slug,
           description: projects.description,
           defaultBranch: projects.defaultBranch,
+          active: projects.active,
           createdAt: projects.createdAt,
         })
         .from(projects)

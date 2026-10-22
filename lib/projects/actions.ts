@@ -94,3 +94,24 @@ export async function deleteProject(id: string): Promise<ActionResult> {
 
   return { ok: true, data: undefined };
 }
+
+export async function setProjectActive(id: string, active: boolean): Promise<ActionResult> {
+  const user = await getCurrentUser();
+
+  const [project] = await db
+    .update(projects)
+    .set({ active })
+    .where(and(eq(projects.id, id), eq(projects.ownerId, user.id)))
+    .returning({ id: projects.id, name: projects.name });
+
+  if (!project) return fail("Projeto não encontrado");
+
+  await logActivity({
+    action: active ? "project.activated" : "project.deactivated",
+    actorId: user.id,
+    projectId: project.id,
+    metadata: { name: project.name },
+  });
+
+  return { ok: true, data: undefined };
+}

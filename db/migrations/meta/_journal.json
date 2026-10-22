@@ -57,6 +57,20 @@
       "when": 1792349783132,
       "tag": "0007_skill_library",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792436000000,
+      "tag": "0008_project_active",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792436100000,
+      "tag": "0009_notifications",
+      "breakpoints": true
     }
   ]
 }
