@@ -2,7 +2,7 @@ import { ActivityIcon, FileTextIcon, FolderGitIcon, GitCommitHorizontalIcon, Git
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { CommitChart } from "@/components/shared/commit-chart";
+import { CommitChart } from "@/components/shared/commit-chart-lazy";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
