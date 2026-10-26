@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 
 import { ProjectActiveToggle } from "@/components/projects/project-active-toggle";
@@ -12,13 +13,14 @@ import { SkillDialog } from "@/components/skills/skill-dialog";
 import { SkillList } from "@/components/skills/skill-list";
 import { ProposalTable } from "@/components/projects/proposal-table";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { contextRepos } from "@/lib/context-repo";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { formatDateTime, shortSha } from "@/lib/format";
-import { getProjectDetail, listProjects } from "@/lib/projects/queries";
+import { getProjectDetail, listProjects, listProposals } from "@/lib/projects/queries";
 import { getCommitHistory, getRepoInfo } from "@/lib/projects/repo-info";
-import { listLibrarySkills, listLinkedLibrarySkills, listProjectSkills, listUniversalSkills } from "@/lib/skills/queries";
+import { countProjectSkills, listLibrarySkills, listLinkedLibrarySkills, listProjectSkills, listUniversalSkills } from "@/lib/skills/queries";
 
 export async function generateMetadata({ params }: PageProps<"/projects/[slug]">): Promise<Metadata> {
   const { slug } = await params;
@@ -31,30 +33,13 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const { slug } = await params;
   const { tab } = await searchParams;
   const user = await getCurrentUser();
-  const { project, proposals, pendingCount } = await getProjectDetail(user.id, slug);
-  const [universalSkills, projectSkills, linkedSkills, librarySkills, allProjects, repo, history] = await Promise.all([
-    listUniversalSkills(user.id),
-    listProjectSkills(project.id),
-    listLinkedLibrarySkills(project.id),
-    listLibrarySkills(user.id),
-    listProjects(user.id),
+  const { project, pendingCount } = await getProjectDetail(user.id, slug);
+  // Caminho crítico: só o que a aba aberta por padrão precisa. Skills e propostas carregam em streaming.
+  const [repo, history, skillCounts] = await Promise.all([
     getRepoInfo(project),
     getCommitHistory(project),
+    countProjectSkills(user.id, project.id),
   ]);
-
-  const currentContents: Record<string, string> = {};
-  await Promise.all(
-    proposals
-      .filter((proposal) => proposal.status === "pending")
-      .map(async ({ filePath }) => {
-        const file = await contextRepos.read(project.slug, filePath).catch(() => null);
-        if (file) currentContents[filePath] = file.content;
-      }),
-  );
-
-  const projectRefs = allProjects.map(({ id, name }) => ({ id, name }));
-  const linkedIds = new Set(linkedSkills.map((skill) => skill.id));
-  const availableLibrary = librarySkills.filter((skill) => !linkedIds.has(skill.id));
 
   const overview = [
     ["Repositório git", repo ? "Local, sem remoto (sem push)" : "Indisponível"],
@@ -62,7 +47,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
     ["Commits", repo ? String(repo.commits) : "—"],
     ["Último commit", repo?.head ? `${shortSha(repo.head.sha)} · ${formatDateTime(repo.head.date)}` : "—"],
     ["Arquivos versionados", repo ? String(repo.files.length) : "—"],
-    ["Skills", `${universalSkills.length} universais · ${linkedSkills.length} da biblioteca · ${projectSkills.length} do projeto`],
+    ["Skills", `${skillCounts.universal} universais · ${skillCounts.linked} da biblioteca · ${skillCounts.project} do projeto`],
     ["Status", project.active ? "Ativo" : "Desativado"],
     ["Alterações pendentes", String(pendingCount)],
   ];
@@ -114,61 +99,14 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           <CommitList commits={history} branch={project.defaultBranch} />
         </TabsContent>
         <TabsContent value="skills" className="space-y-8 pt-4">
-          <section className="space-y-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="font-semibold">Deste projeto</h2>
-                <p className="text-sm text-muted-foreground">Valem só para {project.name}.</p>
-              </div>
-              <div className="flex flex-wrap gap-2 sm:shrink-0">
-                <ImportSkillsDialog target={project.id} />
-                <SkillDialog mode="create" target={project.id} />
-              </div>
-            </div>
-            <SkillList
-              skills={projectSkills}
-              project={project}
-              allProjects={projectRefs}
-              emptyTitle="Nenhuma skill específica"
-              emptyDescription="Crie skills para procedimentos próprios deste projeto."
-            />
-          </section>
-          <section className="space-y-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="font-semibold">Da biblioteca</h2>
-                <p className="text-sm text-muted-foreground">
-                  Skills genéricas aplicadas a este projeto. Edite-as em <Link href="/skills" className="underline">Skills</Link>.
-                </p>
-              </div>
-              <div className="sm:shrink-0">
-                <AddLibrarySkillsDialog projectId={project.id} projectName={project.name} available={availableLibrary} />
-              </div>
-            </div>
-            <SkillList
-              skills={linkedSkills}
-              unlinkFrom={{ id: project.id }}
-              emptyTitle="Nenhuma skill da biblioteca neste projeto"
-              emptyDescription="Aplique skills genéricas da biblioteca, como o fluxo de autodeploy, sem copiar o conteúdo."
-            />
-          </section>
-          <section className="space-y-3">
-            <div>
-              <h2 className="font-semibold">Universais</h2>
-              <p className="text-sm text-muted-foreground">
-                Aplicadas a todos os projetos. Gerencie em <Link href="/skills" className="underline">Skills</Link>.
-              </p>
-            </div>
-            <SkillList
-              skills={universalSkills}
-              readOnly
-              emptyTitle="Nenhuma skill universal"
-              emptyDescription="Skills universais criadas em Skills aparecem aqui automaticamente."
-            />
-          </section>
+          <Suspense fallback={<TabFallback />}>
+            <SkillsTab userId={user.id} project={project} />
+          </Suspense>
         </TabsContent>
         <TabsContent value="changes" className="pt-4">
-          <ProposalTable proposals={proposals} currentContents={currentContents} />
+          <Suspense fallback={<TabFallback />}>
+            <ChangesTab projectId={project.id} slug={project.slug} />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-8 pt-4">
@@ -202,4 +140,97 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
       </Tabs>
     </>
   );
+}
+
+function TabFallback() {
+  return <Skeleton className="h-48 w-full" />;
+}
+
+type ProjectRow = Awaited<ReturnType<typeof getProjectDetail>>["project"];
+
+async function SkillsTab({ userId, project }: { userId: string; project: ProjectRow }) {
+  const [universalSkills, projectSkills, linkedSkills, librarySkills, allProjects] = await Promise.all([
+    listUniversalSkills(userId),
+    listProjectSkills(project.id),
+    listLinkedLibrarySkills(project.id),
+    listLibrarySkills(userId),
+    listProjects(userId),
+  ]);
+
+  const projectRefs = allProjects.map(({ id, name }) => ({ id, name }));
+  const linkedIds = new Set(linkedSkills.map((skill) => skill.id));
+  const availableLibrary = librarySkills.filter((skill) => !linkedIds.has(skill.id));
+
+  return (
+    <>
+          <section className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="font-semibold">Deste projeto</h2>
+            <p className="text-sm text-muted-foreground">Valem só para {project.name}.</p>
+          </div>
+          <div className="flex flex-wrap gap-2 sm:shrink-0">
+            <ImportSkillsDialog target={project.id} />
+            <SkillDialog mode="create" target={project.id} />
+          </div>
+        </div>
+        <SkillList
+          skills={projectSkills}
+          project={project}
+          allProjects={projectRefs}
+          emptyTitle="Nenhuma skill específica"
+          emptyDescription="Crie skills para procedimentos próprios deste projeto."
+        />
+      </section>
+      <section className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="font-semibold">Da biblioteca</h2>
+            <p className="text-sm text-muted-foreground">
+              Skills genéricas aplicadas a este projeto. Edite-as em <Link href="/skills" className="underline">Skills</Link>.
+            </p>
+          </div>
+          <div className="sm:shrink-0">
+            <AddLibrarySkillsDialog projectId={project.id} projectName={project.name} available={availableLibrary} />
+          </div>
+        </div>
+        <SkillList
+          skills={linkedSkills}
+          unlinkFrom={{ id: project.id }}
+          emptyTitle="Nenhuma skill da biblioteca neste projeto"
+          emptyDescription="Aplique skills genéricas da biblioteca, como o fluxo de autodeploy, sem copiar o conteúdo."
+        />
+      </section>
+      <section className="space-y-3">
+        <div>
+          <h2 className="font-semibold">Universais</h2>
+          <p className="text-sm text-muted-foreground">
+            Aplicadas a todos os projetos. Gerencie em <Link href="/skills" className="underline">Skills</Link>.
+          </p>
+        </div>
+        <SkillList
+          skills={universalSkills}
+          readOnly
+          emptyTitle="Nenhuma skill universal"
+          emptyDescription="Skills universais criadas em Skills aparecem aqui automaticamente."
+        />
+      </section>
+    </>
+  );
+}
+
+async function ChangesTab({ projectId, slug }: { projectId: string; slug: string }) {
+  const proposals = await listProposals(projectId);
+
+  const currentContents: Record<string, string> = {};
+  await Promise.all(
+    proposals
+      .filter((proposal) => proposal.status === "pending")
+      .map(async ({ filePath }) => {
+        const file = await contextRepos.read(slug, filePath).catch(() => null);
+        if (file) currentContents[filePath] = file.content;
+      }),
+  );
+
+  return <ProposalTable proposals={proposals} currentContents={currentContents} />;
 }

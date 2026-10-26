@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { projects, projectSkillLinks, skills, type Skill } from "@/db/schema";
@@ -15,6 +15,16 @@ export function listUniversalSkills(ownerId: string) {
 
 export function listProjectSkills(projectId: string) {
   return db.select().from(skills).where(eq(skills.projectId, projectId)).orderBy(asc(skills.name));
+}
+
+/** Contagens para a visão geral do projeto (uma ida ao banco, sem carregar o conteúdo das skills). */
+export async function countProjectSkills(ownerId: string, projectId: string) {
+  const [[universal], [project], [linked]] = await Promise.all([
+    db.select({ value: count() }).from(skills).where(and(eq(skills.ownerId, ownerId), eq(skills.scope, "universal"))),
+    db.select({ value: count() }).from(skills).where(eq(skills.projectId, projectId)),
+    db.select({ value: count() }).from(projectSkillLinks).where(eq(projectSkillLinks.projectId, projectId)),
+  ]);
+  return { universal: universal.value, project: project.value, linked: linked.value };
 }
 
 /** Skills específicas de todos os projetos do dono, já com os dados do projeto. */

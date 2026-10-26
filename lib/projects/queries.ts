@@ -22,21 +22,23 @@ export async function getProjectBySlug(ownerId: string, slug: string) {
   return project;
 }
 
+export function listProposals(projectId: string) {
+  return db
+    .select()
+    .from(changeProposals)
+    .where(eq(changeProposals.projectId, projectId))
+    .orderBy(desc(changeProposals.createdAt))
+    .limit(50);
+}
+
+/** Projeto e contagem de pendências; as propostas em si carregam sob demanda (`listProposals`). */
 export async function getProjectDetail(ownerId: string, slug: string) {
   const project = await getProjectBySlug(ownerId, slug);
 
-  const [proposals, [{ pending }]] = await Promise.all([
-    db
-      .select()
-      .from(changeProposals)
-      .where(eq(changeProposals.projectId, project.id))
-      .orderBy(desc(changeProposals.createdAt))
-      .limit(50),
-    db
-      .select({ pending: count() })
-      .from(changeProposals)
-      .where(and(eq(changeProposals.projectId, project.id), eq(changeProposals.status, "pending"))),
-  ]);
+  const [{ pending }] = await db
+    .select({ pending: count() })
+    .from(changeProposals)
+    .where(and(eq(changeProposals.projectId, project.id), eq(changeProposals.status, "pending")));
 
-  return { project, proposals, pendingCount: pending };
+  return { project, pendingCount: pending };
 }
