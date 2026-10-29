@@ -8,7 +8,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { setProjectActive } from "@/lib/projects/actions";
 
-export function ProjectActiveToggle({ id, active }: { id: string; active: boolean }) {
+type ProjectActiveToggleProps = { id: string; active: boolean; size?: "default" | "sm" };
+
+/** Liga ou desliga o acesso do MCP ao projeto. */
+export function ProjectActiveToggle({ id, active, size = "default" }: ProjectActiveToggleProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -25,7 +28,7 @@ export function ProjectActiveToggle({ id, active }: { id: string; active: boolea
   }
 
   return (
-    <Button variant={active ? "outline" : "default"} onClick={onToggle} disabled={pending}>
+    <Button variant={active ? "outline" : "default"} size={size} onClick={onToggle} disabled={pending}>
       {pending ? <Loader2Icon className="animate-spin" /> : <PowerIcon />}
       {active ? "Desativar projeto" : "Ativar projeto"}
     </Button>

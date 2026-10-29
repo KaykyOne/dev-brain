@@ -26,8 +26,8 @@ const fields = [
 
 const flow = [
   [GitBranchIcon, "Um repositório git por projeto", "Ao criar o projeto, o DevBrain cria um repositório git de contexto no padrão do hub: README com índice “quando carregar”, 00-base.md, skills/, tasks/, notas/, templates-pr/ e raiz/ (AGENTS.md, CLAUDE.md e .claude/settings.json para copiar para a raiz do projeto de código). Ele vive no servidor, sem remoto: dá para clonar do volume e publicar onde quiser."],
-  [BookOpenIcon, "O banco guarda só metadados", "Projetos, registro de skills, propostas pendentes, tokens e atividade ficam no PostgreSQL. O conteúdo do contexto fica no git, com histórico completo."],
-  [KeyRoundIcon, "Agentes entram pelo MCP", "Um token de projeto lê e grava o repositório dele (cada gravação é um commit local). Um token de conta (hub) lista e cria projetos: o agente chama create_project e já recebe o repositório pronto e o token dele."],
+  [BookOpenIcon, "O banco guarda só metadados", "Projetos, registro de skills, propostas pendentes, a chave de acesso e atividade ficam no PostgreSQL. O conteúdo do contexto fica no git, com histórico completo."],
+  [KeyRoundIcon, "Agentes entram pelo MCP", "Um único MCP (devbrain), com uma chave de acesso, atende todos os projetos ativos. O AGENTS.md do projeto de código diz o slug, e o agente o passa em cada ferramenta para ler e gravar o repositório (cada gravação é um commit local). Com create_project ele inicia um projeto novo."],
   [SparklesIcon, "Nunca há push", "O DevBrain não publica nada: não há remoto configurado e as skills permanentes proíbem push. Remover um projeto move o repositório para .trash/, sem apagar o histórico."],
 ] as const;
 

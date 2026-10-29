@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { changeProposals, contextFiles } from "@/db/schema";
+import { changeProposals, contextFiles, type Project } from "@/db/schema";
 import { logActivity } from "@/lib/activity";
 import { notify } from "@/lib/notifications";
 import { normalizeRelativePath } from "@/lib/security/paths";
@@ -27,6 +27,7 @@ export type ProposeChangeResult =
 
 export async function createAgentProposal(
   context: AgentContext,
+  project: Pick<Project, "id" | "name" | "slug">,
   input: z.infer<typeof proposeChangeSchema>,
 ): Promise<ProposeChangeResult> {
   const filePath = normalizeRelativePath(input.file_path);
@@ -39,8 +40,7 @@ export async function createAgentProposal(
     return { ok: false, error: `O conteúdo parece conter segredos (${secrets.join(", ")}). Remova antes de propor.` };
   }
 
-  if (!context.project) return { ok: false, error: "Token de conta não pode propor alterações em projetos." };
-  const projectId = context.project.id;
+  const projectId = project.id;
 
   const [duplicate] = await db
     .select({ id: changeProposals.id, status: changeProposals.status })
@@ -87,8 +87,8 @@ export async function createAgentProposal(
     projectId,
     kind: "proposal.created",
     title: "IA solicitou aprovação",
-    body: `${context.project.name}: ${filePath} — ${input.reason}`.slice(0, 300),
-    href: `/projects/${context.project.slug}?tab=changes`,
+    body: `${project.name}: ${filePath} — ${input.reason}`.slice(0, 300),
+    href: `/projects/${project.slug}?tab=changes`,
   });
 
   return { ok: true, id: proposal.id, status: proposal.status, duplicate: false };

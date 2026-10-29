@@ -4,20 +4,17 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/db";
-import { agentTokens, projects } from "@/db/schema";
+import { agentTokens } from "@/db/schema";
 import { env } from "@/lib/env";
 import { createRateLimiter } from "@/lib/security/rate-limit";
 
-import type { AgentScope } from "./scopes";
 import { evaluateToken, hashToken, parseBearerToken } from "./token";
 
+/** Quem chama o MCP. O projeto vem de cada ferramenta (argumento `project`), não do token. */
 export type AgentContext = {
   tokenId: string;
   tokenName: string;
-  scopes: AgentScope[];
   ownerId: string;
-  /** Nulo em token de conta (hub). */
-  project: typeof projects.$inferSelect | null;
 };
 
 const checkRate = createRateLimiter({ limit: 120, windowMs: 60_000 });
@@ -40,13 +37,20 @@ export async function authenticateAgent(
   if (!token) return { ok: false, response: problem(401, "Token ausente ou inválido", challenge) };
 
   const [row] = await db
-    .select({ token: agentTokens, project: projects })
+    .select({ token: agentTokens })
     .from(agentTokens)
-    .leftJoin(projects, eq(projects.id, agentTokens.projectId))
     .where(eq(agentTokens.tokenHash, hashToken(token)))
     .limit(1);
 
   if (!row) return { ok: false, response: problem(401, "Token ausente ou inválido", challenge) };
+
+  // Tokens por projeto (modelo antigo) não valem mais: o MCP é um só, com a chave de acesso da conta.
+  if (row.token.projectId) {
+    return {
+      ok: false,
+      response: problem(401, "Token de projeto descontinuado: gere a chave de acesso em /mcp", challenge),
+    };
+  }
 
   const state = evaluateToken(row.token, new Date());
   if (state !== "ok") {
@@ -71,9 +75,7 @@ export async function authenticateAgent(
     context: {
       tokenId: row.token.id,
       tokenName: row.token.name,
-      scopes: row.token.scopes as AgentScope[],
       ownerId: row.token.ownerId,
-      project: row.project,
     },
   };
 }

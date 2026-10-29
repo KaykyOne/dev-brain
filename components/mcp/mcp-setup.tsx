@@ -6,78 +6,63 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { mcpServerName } from "@/lib/agent/instructions";
+import { MCP_SERVER_NAME } from "@/lib/agent/instructions";
 
 import { AgentsInstructions } from "./agents-instructions";
 import { InstallSnippets } from "./install-snippets";
 
-const ACCOUNT = "account";
-
 type McpSetupProps = {
-  projects: { id: string; name: string; slug: string }[];
+  projects: { id: string; name: string; slug: string; active: boolean }[];
   endpoint: string;
   /** Conteúdo renderizado no servidor, encaixado nas abas. */
-  tokens: React.ReactNode;
-  tokenCount: number;
+  projectList: React.ReactNode;
+  accessKey: React.ReactNode;
   tools: React.ReactNode;
 };
 
-/** Abas da página MCP: tokens, instalação (alvo: um projeto ou a conta) e instruções do AGENTS.md. */
-export function McpSetup({ projects, endpoint, tokens, tokenCount, tools }: McpSetupProps) {
-  const [target, setTarget] = useState(projects[0]?.id ?? ACCOUNT);
-  const project = projects.find((item) => item.id === target) ?? null;
-  // O AGENTS.md é sempre de um projeto: seletor próprio, para não depender do alvo da instalação (que pode ser a conta).
+/** Abas da página MCP: projetos acessíveis, instalação (chave única) e instruções do AGENTS.md. */
+export function McpSetup({ projects, endpoint, projectList, accessKey, tools }: McpSetupProps) {
+  // O AGENTS.md é o que diz ao agente qual projeto usar: um texto por projeto.
   const [instructionsId, setInstructionsId] = useState(projects[0]?.id ?? "");
   const instructionsProject = projects.find((item) => item.id === instructionsId) ?? null;
   const projectItems = Object.fromEntries(projects.map((item) => [item.id, item.name]));
-
-  const items = {
-    [ACCOUNT]: "Conta (hub): listar e criar projetos",
-    ...Object.fromEntries(projects.map((item) => [item.id, item.name])),
-  };
+  const activeCount = projects.filter((item) => item.active).length;
 
   return (
-    <Tabs defaultValue="tokens">
+    <Tabs defaultValue="projects">
       <TabsList>
-        <TabsTrigger value="tokens">Tokens ({tokenCount})</TabsTrigger>
+        <TabsTrigger value="projects">
+          Projetos ({activeCount}/{projects.length})
+        </TabsTrigger>
         <TabsTrigger value="install">Instalação</TabsTrigger>
         <TabsTrigger value="agents">AGENTS.md</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="tokens" className="pt-2">
-        {tokens}
+      <TabsContent value="projects" className="pt-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Projetos acessíveis pelo MCP</CardTitle>
+            <CardDescription>
+              Um único servidor <code className="font-mono">{MCP_SERVER_NAME}</code> atende todos os projetos. Só os
+              ativos respondem; num desativado o agente é avisado para pedir a reativação.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>{projectList}</CardContent>
+        </Card>
       </TabsContent>
 
       <TabsContent value="install" className="space-y-4 pt-2">
+        {accessKey}
         <Card>
           <CardHeader>
             <CardTitle>Instalação</CardTitle>
             <CardDescription>
-              Escolha o alvo e substitua <code className="font-mono">&lt;SEU_TOKEN&gt;</code> por um token criado acima.
-              Ao gerar um token, os mesmos comandos aparecem já preenchidos.
+              Uma vez por máquina. Substitua <code className="font-mono">&lt;SUA_CHAVE&gt;</code> pela chave de acesso;
+              ao gerar uma chave, os mesmos comandos aparecem já preenchidos.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Field className="max-w-md">
-              <FieldLabel>Alvo</FieldLabel>
-              <Select items={items} value={target} onValueChange={(value) => value && setTarget(value)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(items).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldDescription>
-                Servidor: <code className="font-mono">{mcpServerName(project?.slug)}</code>. Um servidor por projeto,
-                mais um de conta.
-              </FieldDescription>
-            </Field>
-            <InstallSnippets endpoint={endpoint} projectSlug={project?.slug} />
+          <CardContent>
+            <InstallSnippets endpoint={endpoint} />
           </CardContent>
         </Card>
         {tools}
@@ -88,8 +73,8 @@ export function McpSetup({ projects, endpoint, tokens, tokenCount, tools }: McpS
           <CardHeader>
             <CardTitle>Instruções para o AGENTS.md</CardTitle>
             <CardDescription>
-              O agente só é obrigado a seguir o que está no <code className="font-mono">AGENTS.md</code>. Cole este
-              texto no arquivo do projeto de código para tornar o uso do MCP obrigatório.
+              É o <code className="font-mono">AGENTS.md</code> do projeto de código que diz ao agente qual projeto do
+              DevBrain usar, e torna o uso do MCP obrigatório. Cole este texto nele.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

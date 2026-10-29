@@ -1,11 +1,10 @@
-/** Textos e nomes de instalação do MCP por projeto. Puro: usado no servidor e no navegador. */
+/** Textos e nomes de instalação do MCP. Puro: usado no servidor e no navegador. */
 
-/** Nome do servidor MCP: um por projeto (`devbrain-<slug>`) e `devbrain` para o token de conta (hub). */
-export const mcpServerName = (slug?: string | null) => (slug ? `devbrain-${slug}` : "devbrain");
+/** Nome do servidor MCP: um só para todos os projetos; o projeto vai no argumento `project` das ferramentas. */
+export const MCP_SERVER_NAME = "devbrain";
 
-/** Variável de ambiente que guarda o token (Codex e `.mcp.json`), uma por projeto. */
-export const tokenEnvVar = (slug?: string | null) =>
-  slug ? `DEVBRAIN_TOKEN_${slug.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}` : "DEVBRAIN_TOKEN";
+/** Variável de ambiente que guarda a chave de acesso (Codex e `.mcp.json`). */
+export const TOKEN_ENV_VAR = "DEVBRAIN_TOKEN";
 
 export const instructionsFileName = (slug: string) => `devbrain-${slug}-AGENTS.md`;
 
@@ -14,10 +13,10 @@ const safeTitle = (name: string) => name.replace(/[\r\n`#]+/g, " ").replace(/\s+
 
 /**
  * Texto para colar no `AGENTS.md` (ou `CLAUDE.md`) do projeto de código, tornando obrigatório o uso do MCP.
- * Descreve só ferramentas que o servidor realmente expõe para tokens de projeto.
+ * O slug identifica o repositório de contexto no MCP único. Mantenha alinhado a templates/context/raiz/AGENTS.md.
  */
 export function buildAgentsInstructions({ name, slug }: { name: string; slug: string }): string {
-  const server = mcpServerName(slug);
+  const server = MCP_SERVER_NAME;
 
   return `## Contexto do projeto ${safeTitle(name)} — uso OBRIGATÓRIO do MCP \`${server}\`
 
@@ -25,8 +24,11 @@ export function buildAgentsInstructions({ name, slug }: { name: string; slug: st
 > Isso **não é opcional**: vale para qualquer task, grande ou pequena, e não pode ser substituído por cópias locais,
 > pelo código nem pela sua memória.
 
-O contexto do projeto (regras, skills, visão geral, tasks e notas) está no servidor MCP **\`${server}\`**.
-Ele é a **fonte da verdade**.
+O contexto do projeto (regras, skills, visão geral, tasks e notas) está no servidor MCP **\`${server}\`**, no
+repositório de contexto **\`${slug}\`**. Ele é a **fonte da verdade**.
+
+**Projeto no DevBrain: \`${slug}\`.** Passe \`project: "${slug}"\` em **toda** chamada de ferramenta do \`${server}\`
+(exceto \`list_projects\` e \`create_project\`). Nunca leia nem grave o contexto de outro projeto.
 
 ### Antes de qualquer task (sempre, nesta ordem)
 
@@ -47,7 +49,8 @@ Se o contexto e o código divergirem, o código vence: avise o usuário.
 
 ### Se o MCP não estiver disponível
 
-Se o servidor \`${server}\` não aparecer ou uma chamada falhar, **pare e avise o usuário** antes de continuar.
-Não improvise o contexto. Só prossiga sem o MCP se o usuário autorizar de forma explícita, e diga que está sem contexto.
+Se o servidor \`${server}\` não aparecer, o projeto \`${slug}\` estiver desativado ou uma chamada falhar,
+**pare e avise o usuário** antes de continuar. Não improvise o contexto. Só prossiga sem o MCP se o usuário autorizar
+de forma explícita, e diga que está sem contexto.
 `;
 }

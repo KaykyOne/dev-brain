@@ -1,36 +1,42 @@
 import "server-only";
 
+import { and, eq, isNull } from "drizzle-orm";
+
 import { db } from "@/db";
 import { agentTokens } from "@/db/schema";
 
-import type { AgentScope } from "./scopes";
 import { generateToken } from "./token";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+export const ACCESS_KEY_NAME = "Chave de acesso";
 
-/** Cria um token de agente. O valor em claro é devolvido uma única vez; só o hash é guardado. */
-export async function issueAgentToken(input: {
-  ownerId: string;
-  projectId: string | null;
-  name: string;
-  scopes: AgentScope[];
-  expiresInDays: number | null;
-}) {
-  const { token, hash, prefix } = generateToken();
-  const expiresAt = input.expiresInDays === null ? null : new Date(Date.now() + input.expiresInDays * DAY_MS);
-
-  const [created] = await db
-    .insert(agentTokens)
-    .values({
-      ownerId: input.ownerId,
-      projectId: input.projectId,
-      name: input.name,
-      scopes: input.scopes,
-      expiresAt,
-      tokenHash: hash,
-      tokenPrefix: prefix,
-    })
+/** Revoga todos os tokens ainda ativos da conta (inclusive os de projeto do modelo antigo). Devolve quantos. */
+export async function revokeAllAgentTokens(ownerId: string) {
+  const revoked = await db
+    .update(agentTokens)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(agentTokens.ownerId, ownerId), isNull(agentTokens.revokedAt)))
     .returning({ id: agentTokens.id });
+  return revoked.length;
+}
 
-  return { id: created.id, token, prefix, expiresAt };
+/**
+ * Emite a chave de acesso do MCP: uma só por conta, então as anteriores são revogadas.
+ * O valor em claro é devolvido uma única vez; só o hash é guardado.
+ */
+export async function issueAccessKey(ownerId: string) {
+  const { token, hash, prefix } = generateToken();
+
+  return db.transaction(async (tx) => {
+    await tx
+      .update(agentTokens)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(agentTokens.ownerId, ownerId), isNull(agentTokens.revokedAt)));
+
+    const [created] = await tx
+      .insert(agentTokens)
+      .values({ ownerId, projectId: null, name: ACCESS_KEY_NAME, scopes: [], tokenHash: hash, tokenPrefix: prefix })
+      .returning({ id: agentTokens.id, createdAt: agentTokens.createdAt });
+
+    return { id: created.id, token, prefix, createdAt: created.createdAt };
+  });
 }

@@ -2,7 +2,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { mcpServerName, tokenEnvVar } from "@/lib/agent/instructions";
+import { MCP_SERVER_NAME, TOKEN_ENV_VAR } from "@/lib/agent/instructions";
 
 import { CopyButton } from "./copy-button";
 
@@ -23,20 +23,18 @@ function Snippet({ title, hint, code }: { title: string; hint?: string; code: st
 
 type InstallSnippetsProps = {
   endpoint: string;
+  /** Chave recém-gerada; sem ela os comandos mostram um marcador. */
   token?: string;
-  /** Slug do projeto do token. Ausente = token de conta (hub). */
-  projectSlug?: string | null;
 };
 
-export function InstallSnippets({ endpoint, token, projectSlug }: InstallSnippetsProps) {
-  const value = token ?? "<SEU_TOKEN>";
-  const server = mcpServerName(projectSlug);
-  const tokenVar = tokenEnvVar(projectSlug);
-  const isProject = !!projectSlug;
+/** Comandos para instalar o MCP único: uma vez por máquina, vale para todos os projetos. */
+export function InstallSnippets({ endpoint, token }: InstallSnippetsProps) {
+  const value = token ?? "<SUA_CHAVE>";
+  const server = MCP_SERVER_NAME;
+  const tokenVar = TOKEN_ENV_VAR;
 
-  // Token de projeto só vale em uma pasta (escopo local, o padrão do Claude Code); o de conta vale em todas.
-  const scope = isProject ? "" : "--scope user ";
-  const claudeCommand = `claude mcp add --transport http ${scope}${server} ${endpoint} \\\n  --header "Authorization: Bearer ${value}"`;
+  // Escopo de usuário: o mesmo servidor atende todas as pastas; o projeto vem do AGENTS.md de cada uma.
+  const claudeCommand = `claude mcp add --transport http --scope user ${server} ${endpoint} \\\n  --header "Authorization: Bearer ${value}"`;
 
   const mcpJson = JSON.stringify(
     { mcpServers: { [server]: { type: "http", url: endpoint, headers: { Authorization: `Bearer \${${tokenVar}}` } } } },
@@ -58,27 +56,21 @@ export function InstallSnippets({ endpoint, token, projectSlug }: InstallSnippet
       <TabsContent value="claude" className="space-y-4 pt-4">
         <Snippet
           title="Adicionar o servidor"
-          hint={
-            isProject
-              ? "Rode no terminal, dentro da pasta do projeto de código: o servidor só fica ativo nessa pasta."
-              : "Rode no terminal. O token de conta vale em todos os seus projetos."
-          }
+          hint="Rode uma vez no terminal: o servidor vale em todas as pastas. Cada projeto de código diz o seu projeto no AGENTS.md."
           code={claudeCommand}
         />
-        {isProject && (
-          <Snippet
-            title="Ou compartilhe pelo .mcp.json"
-            hint={`Na raiz do projeto de código. O token fica na variável ${tokenVar}, e não no arquivo.`}
-            code={mcpJson}
-          />
-        )}
+        <Snippet
+          title="Ou pelo .mcp.json"
+          hint={`Na raiz de um projeto de código. A chave fica na variável ${tokenVar}, e não no arquivo.`}
+          code={mcpJson}
+        />
         <Snippet title="Verificar" hint="Dentro do Claude Code, /mcp também mostra o estado." code="claude mcp list" />
       </TabsContent>
 
       <TabsContent value="codex" className="space-y-4 pt-4">
         <Snippet
-          title="Exporte o token"
-          hint="O Codex lê o token desta variável de ambiente: ele não fica no arquivo. Adicione ao ~/.bashrc ou ~/.zshrc para persistir."
+          title="Exporte a chave"
+          hint="O Codex lê a chave desta variável de ambiente: ele não fica no arquivo. Adicione ao ~/.bashrc ou ~/.zshrc para persistir."
           code={codexEnv}
         />
         <Snippet
@@ -89,11 +81,7 @@ export function InstallSnippets({ endpoint, token, projectSlug }: InstallSnippet
         <Snippet title="Verificar" hint="Dentro do Codex, /mcp também mostra o estado." code={`codex mcp list\ncodex mcp get ${server}`} />
         <Snippet
           title="Ou edite o config.toml"
-          hint={
-            isProject
-              ? "Equivalente ao comando. Para valer só neste projeto, use .codex/config.toml na raiz do projeto de código (só funciona em projetos confiáveis)."
-              : "Equivalente ao comando, em ~/.codex/config.toml."
-          }
+          hint="Equivalente ao comando, em ~/.codex/config.toml."
           code={codexConfig}
         />
       </TabsContent>

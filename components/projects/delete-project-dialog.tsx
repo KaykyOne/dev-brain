@@ -46,7 +46,7 @@ export function DeleteProjectDialog({ id, name }: { id: string; name: string }) 
         <DialogHeader>
           <DialogTitle>Remover “{name}”?</DialogTitle>
           <DialogDescription>
-            Os metadados, propostas e tokens deste projeto serão apagados do DevBrain. Os arquivos no
+            Os metadados e propostas deste projeto serão apagados do DevBrain. Os arquivos no
             repositório Git não são afetados.
           </DialogDescription>
         </DialogHeader>

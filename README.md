@@ -36,7 +36,7 @@ visão geral, tasks e notas em um repositório git, e entregando esse contexto a
 |---|---|---|
 | 📁 | **Projetos** | Cada projeto ganha um repositório git no padrão do hub: `README.md` com índice "quando carregar", `00-base.md`, `skills/`, `tasks/`, `notas/`, `templates-pr/` e `raiz/`. |
 | ✨ | **Skills** | Universais, de biblioteca (criadas uma vez, aplicadas em vários projetos) e de projeto. Busca com grifo, promoção e editor Markdown. |
-| 🔌 | **Servidor MCP** | Tokens por projeto (ou de conta), com escopos, expiração e revogação. Comandos de instalação prontos para Claude Code e Codex. |
+| 🔌 | **Servidor MCP** | Um servidor só para todos os projetos, com uma chave de acesso. Você escolhe quais projetos ficam acessíveis. Comandos de instalação prontos para Claude Code e Codex. |
 | 📜 | **AGENTS.md por projeto** | Gera, para copiar ou baixar, o texto que torna **obrigatório** o uso do MCP pelo agente. |
 | 🤖 | **Assistente de IA** | Chat que cria skills e projetos e grava contexto, mostrando cada ação como um passo. |
 | 🪵 | **Logs** | Erros e eventos do servidor persistidos e filtráveis na própria interface. |
@@ -74,33 +74,35 @@ Após alterar o schema: `npm run db:generate`. As migrations pendentes são apli
 
 ## Conectando um agente (MCP)
 
-O servidor MCP (Streamable HTTP) fica em `${APP_URL}/api/mcp`, autenticado por token Bearer. Em **/mcp** você cria
-tokens e copia os comandos já preenchidos.
+Um **único** servidor MCP (Streamable HTTP), `devbrain`, atende todos os projetos em `${APP_URL}/api/mcp`, autenticado
+por uma **chave de acesso** (Bearer). Em **/mcp → Instalação** você gera a chave e copia os comandos já preenchidos.
+Instale uma vez por máquina:
 
 **Claude Code**
 
 ```bash
-claude mcp add --transport http devbrain-<slug> https://seu-app/api/mcp \
-  --header "Authorization: Bearer <SEU_TOKEN>"
+claude mcp add --transport http --scope user devbrain https://seu-app/api/mcp \
+  --header "Authorization: Bearer <SUA_CHAVE>"
 ```
 
 **Codex**
 
 ```bash
-export DEVBRAIN_TOKEN_<SLUG>="<SEU_TOKEN>"
-codex mcp add devbrain-<slug> --url https://seu-app/api/mcp \
-  --bearer-token-env-var DEVBRAIN_TOKEN_<SLUG>
+export DEVBRAIN_TOKEN="<SUA_CHAVE>"
+codex mcp add devbrain --url https://seu-app/api/mcp --bearer-token-env-var DEVBRAIN_TOKEN
 ```
 
-- Um servidor MCP **por projeto** (`devbrain-<slug>`, vale na pasta do projeto) e um **de conta** (`devbrain`) para
-  listar e criar projetos.
-- Cada token tem escopos (`context:read`, `context:write`, `changes:propose`), expiração opcional e pode ser
-  revogado. Só o hash é guardado. Nunca há push: cada gravação vira um commit local.
-- **Ferramentas (projeto)**: `get_project`, `list_context_files`, `read_context_file`, `write_context_file`,
-  `repo_log`, `list_skills`, `get_skill`, `propose_change`, `get_change`. **(conta)**: `list_projects`, `create_project`.
-- **AGENTS.md**: o agente só é obrigado a seguir o que está no `AGENTS.md`. Na aba `/mcp`, escolha o projeto em
-  "Instruções para o AGENTS.md" e copie ou baixe o texto: ele manda ler o índice e as skills antes de qualquer task,
-  registrar o que aprender e parar se o MCP falhar.
+- **Qual projeto?** O `AGENTS.md` do projeto de código diz o slug do projeto no DevBrain, e o agente o passa no
+  argumento `project` de cada ferramenta. Em **/mcp → AGENTS.md** escolha o projeto e copie ou baixe o texto (todo
+  repositório de contexto também já nasce com ele em `raiz/AGENTS.md`). O texto manda ler o índice e as skills antes de
+  qualquer task, registrar o que aprender e parar se o MCP falhar.
+- **Acesso**: não há tokens por projeto nem escopos. Em **/mcp → Projetos** você liga e desliga quais projetos o MCP
+  atende; num projeto desativado o agente recebe um aviso para pedir a reativação (e você, uma notificação).
+- **Chave**: só existe uma por vez (gerar uma nova revoga a anterior) e só o hash é guardado. **Revogar todos os
+  tokens** derruba todo acesso, inclusive os tokens de projeto do modelo antigo, que já não são aceitos. Nunca há push:
+  cada gravação vira um commit local.
+- **Ferramentas**: `list_projects`, `create_project` e, com `project`: `get_project`, `list_context_files`,
+  `read_context_file`, `write_context_file`, `repo_log`, `list_skills`, `get_skill`, `propose_change`, `get_change`.
 
 ## Skills
 

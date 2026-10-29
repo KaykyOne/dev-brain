@@ -62,7 +62,7 @@ describe("initRepo", () => {
   it("gera o raiz/AGENTS.md que obriga o uso do MCP do projeto", async () => {
     const agents = await readFile(join(dir, "raiz/AGENTS.md"), "utf8");
     expect(agents).toContain("OBRIGATÓRIO");
-    expect(agents).toContain("devbrain-projeto-teste");
+    expect(agents).toContain('project: "projeto-teste"');
     expect(agents).toContain("Projeto Teste");
     expect(agents).not.toContain("{{");
   });

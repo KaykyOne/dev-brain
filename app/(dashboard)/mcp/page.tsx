@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
+import { AccessKeyCard } from "@/components/mcp/access-key-card";
 import { CopyButton } from "@/components/mcp/copy-button";
-import { CreateTokenDialog } from "@/components/mcp/create-token-dialog";
+import { McpProjects } from "@/components/mcp/mcp-projects";
 import { McpSetup } from "@/components/mcp/mcp-setup";
-import { TokenTable } from "@/components/mcp/token-table";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { listAgentTokens } from "@/lib/agent/queries";
+import { getAccessKeyStatus } from "@/lib/agent/queries";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { env } from "@/lib/env";
 import { listProjects } from "@/lib/projects/queries";
@@ -15,7 +15,8 @@ export const metadata: Metadata = { title: "MCP" };
 
 export default async function McpPage() {
   const user = await getCurrentUser();
-  const [projects, tokens] = await Promise.all([listProjects(user.id), listAgentTokens(user.id)]);
+  const [rows, access] = await Promise.all([listProjects(user.id), getAccessKeyStatus(user.id)]);
+  const projects = rows.map(({ id, name, slug, active }) => ({ id, name, slug, active }));
 
   const endpoint = `${env.APP_URL}/api/mcp`;
 
@@ -23,14 +24,13 @@ export default async function McpPage() {
     <>
       <PageHeader
         title="MCP"
-        description="Conecte o Claude Code, o Codex e outros agentes aos repositórios de contexto do hub."
-        actions={<CreateTokenDialog projects={projects.map(({ id, name }) => ({ id, name }))} endpoint={endpoint} />}
+        description="Um servidor MCP para todos os projetos: o AGENTS.md de cada projeto de código diz qual contexto usar."
       />
 
       <Card>
         <CardHeader>
           <CardTitle>Endpoint</CardTitle>
-          <CardDescription>Servidor MCP (Streamable HTTP). Autenticação por token Bearer.</CardDescription>
+          <CardDescription>Servidor MCP (Streamable HTTP). Autenticação pela chave de acesso (Bearer).</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center gap-2">
           <code className="min-w-0 flex-1 truncate rounded-lg border bg-muted/50 px-3 py-2 font-mono text-sm">
@@ -41,22 +41,16 @@ export default async function McpPage() {
       </Card>
 
       <McpSetup
-        projects={projects.map(({ id, name, slug }) => ({ id, name, slug }))}
+        projects={projects}
         endpoint={endpoint}
-        tokenCount={tokens.length}
-        tokens={
-          <Card>
-            <CardHeader>
-              <CardTitle>Tokens</CardTitle>
-              <CardDescription>
-                Token de projeto dá acesso a um único repositório; token de conta (hub) só lista e cria projetos. Ambos
-                podem ser revogados a qualquer momento.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <TokenTable tokens={tokens} now={new Date()} />
-            </CardContent>
-          </Card>
+        projectList={<McpProjects projects={projects} />}
+        accessKey={
+          <AccessKeyCard
+            endpoint={endpoint}
+            current={access.key}
+            activeCount={access.activeCount}
+            legacyCount={access.legacyCount}
+          />
         }
         tools={
           <Card>
@@ -67,19 +61,19 @@ export default async function McpPage() {
               <div className="space-y-4 text-sm">
                 {[
                   [
-                    "Token de conta (hub)",
+                    "Hub",
                     [
-                      ["list_projects", "Lista os projetos (repositórios de contexto) da conta"],
-                      ["create_project", "Inicia um projeto novo: cria o repositório git no padrão do hub e, se quiser, já emite o token dele"],
+                      ["list_projects", "Lista os projetos da conta, com slug e se está ativo"],
+                      ["create_project", "Inicia um projeto novo: cria o repositório git no padrão do hub, já ativo"],
                     ],
                   ],
                   [
-                    "Token de projeto",
+                    "Por projeto (argumento project: slug)",
                     [
                       ["get_project", "Metadados do projeto e estado do repositório (commits, último commit)"],
                       ["list_context_files", "Arquivos versionados no repositório (filtro por pasta)"],
                       ["read_context_file", "Lê um arquivo do repositório (README.md, 00-base.md, skills/...)"],
-                      ["write_context_file", "Grava um arquivo e faz um commit local só com ele (escopo context:write; nunca há push)"],
+                      ["write_context_file", "Grava um arquivo e faz um commit local só com ele (nunca há push)"],
                       ["repo_log", "Últimos commits do repositório"],
                       ["list_skills / get_skill", "Skills cadastradas no DevBrain (universais, da biblioteca aplicadas ao projeto e do próprio projeto)"],
                       ["propose_change / get_change", "Propõe alteração para revisão humana; fica pendente até aprovação"],

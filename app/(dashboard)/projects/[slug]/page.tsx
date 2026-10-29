@@ -124,7 +124,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             <div>
               <p className="font-medium">Status do projeto</p>
               <p className="text-sm text-muted-foreground">
-                Projetos desativados ficam indisponíveis no MCP: o agente é avisado para pedir a reativação.
+                Projetos desativados ficam indisponíveis no MCP: o agente é avisado para pedir a reativação. Também dá para ligar e desligar na página MCP.
               </p>
             </div>
             <ProjectActiveToggle id={project.id} active={project.active} />

@@ -2,25 +2,12 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 
 import { authenticateAgent, type AgentContext } from "@/lib/agent/auth";
 import { createMcpServer } from "@/lib/agent/mcp-server";
-import { notify } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
 
 /** Registra cada ferramenta chamada pelo agente (inclusive as de leitura) na página Logs. */
 async function logToolCalls(request: Request, context: AgentContext) {
   const body: unknown = await request.clone().json().catch(() => null);
   const messages = Array.isArray(body) ? body : [body];
-
-  if (context.project && !context.project.active) {
-    await notify({
-      ownerId: context.ownerId,
-      projectId: context.project.id,
-      kind: "project.inactive_access",
-      title: "IA tentou usar um projeto desativado",
-      body: `${context.project.name}: o agente "${context.tokenName}" foi avisado para pedir a reativação.`,
-      href: `/projects/${context.project.slug}?tab=settings`,
-      dedupe: true,
-    });
-  }
 
   for (const message of messages) {
     const { method, params } = (message ?? {}) as { method?: unknown; params?: { name?: unknown; arguments?: Record<string, unknown> } };
@@ -31,7 +18,7 @@ async function logToolCalls(request: Request, context: AgentContext) {
       details: {
         ferramenta: params.name,
         token: context.tokenName,
-        projeto: context.project?.slug,
+        ...(typeof params.arguments?.project === "string" ? { projeto: params.arguments.project } : {}),
         ...(typeof path === "string" ? { arquivo: path } : {}),
       },
     });
