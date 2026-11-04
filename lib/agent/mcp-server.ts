@@ -22,6 +22,7 @@ import {
 } from "@/lib/skills/queries";
 import { skillRepoPath } from "@/lib/skills/paths";
 import { slugify, SLUG_PATTERN } from "@/lib/slug";
+import { recordMcpUsage } from "@/lib/usage";
 
 import type { AgentContext } from "./auth";
 import { createAgentProposal, proposeChangeSchema } from "./proposals";
@@ -34,6 +35,10 @@ const error = (message: string): CallToolResult => ({
   isError: true,
   content: [{ type: "text", text: message }],
 });
+
+/** Caracteres de texto da resposta: é o que vira tokens no contexto do agente. */
+const responseChars = (result: CallToolResult) =>
+  result.content.reduce((total, part) => total + (part.type === "text" ? part.text.length : 0), 0);
 
 /** Erros esperados do repositório viram mensagem para o agente; o resto não vaza detalhes do servidor. */
 async function guard(task: () => Promise<CallToolResult>): Promise<CallToolResult> {
@@ -109,15 +114,21 @@ export function createMcpServer(context: AgentContext) {
   const ensureRepo = (project: Project) =>
     contextRepos.init({ name: project.name, slug: project.slug, description: project.description }, project.defaultBranch);
 
-  /** Envolve uma ferramenta de projeto: resolve o slug, garante o repositório e trata os erros. */
+  /** Registra o tamanho da resposta entregue ao agente (para a estimativa de tokens). */
+  const measured = async (tool: string, projectId: string | null, result: CallToolResult) => {
+    await recordMcpUsage({ ownerId: context.ownerId, projectId, tokenId: context.tokenId, tool, responseChars: responseChars(result) });
+    return result;
+  };
+
+  /** Envolve uma ferramenta de projeto: resolve o slug, garante o repositório, trata os erros e mede a resposta. */
   const withProject =
-    <A extends { project: string }>(task: (project: Project, args: A) => Promise<CallToolResult>) =>
+    <A extends { project: string }>(tool: string, task: (project: Project, args: A) => Promise<CallToolResult>) =>
     (args: A) =>
       guard(async () => {
         const resolved = await resolveProject(args.project);
         if ("denied" in resolved) return resolved.denied;
         await ensureRepo(resolved.project);
-        return task(resolved.project, args);
+        return measured(tool, resolved.project.id, await guard(() => task(resolved.project, args)));
       });
 
   server.registerTool(
@@ -143,7 +154,7 @@ export function createMcpServer(context: AgentContext) {
         .where(eq(projects.ownerId, context.ownerId))
         .orderBy(desc(projects.updatedAt));
 
-      return json({ projects: rows });
+      return measured("list_projects", null, json({ projects: rows }));
     },
   );
 
@@ -178,7 +189,7 @@ export function createMcpServer(context: AgentContext) {
 
         const [files, summary] = await Promise.all([contextRepos.files(slug), contextRepos.summary(slug)]);
 
-        return json({
+        return measured("create_project", created.data.id, json({
           project: { name: args.name, slug, defaultBranch, url: `${env.APP_URL}/projects/${slug}` },
           repository: { commits: summary.commits, head: summary.head, files },
           next_steps: [
@@ -187,7 +198,7 @@ export function createMcpServer(context: AgentContext) {
             "Copie os arquivos de raiz/ (AGENTS.md, CLAUDE.md, .claude/settings.json) para a raiz do projeto de código: " +
               "o AGENTS.md já indica o slug do projeto.",
           ],
-        });
+        }));
       }),
   );
 
@@ -199,7 +210,7 @@ export function createMcpServer(context: AgentContext) {
       inputSchema: { project: projectArg },
       annotations: { readOnlyHint: true },
     },
-    withProject(async (project) => {
+    withProject("get_project", async (project) => {
       const { commits, head } = await contextRepos.summary(project.slug);
       const { name, slug, description, defaultBranch } = project;
       return json({ name, slug, description, defaultBranch, repository: { commits, head } });
@@ -219,7 +230,7 @@ export function createMcpServer(context: AgentContext) {
       },
       annotations: { readOnlyHint: true },
     },
-    withProject(async (project, { prefix }) => {
+    withProject("list_context_files", async (project, { prefix }) => {
       const files = await contextRepos.files(project.slug);
       return json({ files: prefix ? files.filter((file) => file.startsWith(prefix)) : files });
     }),
@@ -233,7 +244,7 @@ export function createMcpServer(context: AgentContext) {
       inputSchema: { project: projectArg, path: z.string().min(1).max(300).describe("Caminho relativo à raiz do repositório") },
       annotations: { readOnlyHint: true },
     },
-    withProject(async (project, { path }) => json(await contextRepos.read(project.slug, path))),
+    withProject("read_context_file", async (project, { path }) => json(await contextRepos.read(project.slug, path))),
   );
 
   server.registerTool(
@@ -251,7 +262,7 @@ export function createMcpServer(context: AgentContext) {
         commit_message: z.string().trim().min(1).max(200).describe("Mensagem do commit, uma linha. Ex.: docs: registrar decisão de cache"),
       },
     },
-    withProject(async (project, { path, content, commit_message }) => {
+    withProject("write_context_file", async (project, { path, content, commit_message }) => {
       const secrets = findSecrets(content);
       if (secrets.length > 0) {
         return error(`O conteúdo parece conter segredos (${secrets.join(", ")}). Remova antes de gravar.`);
@@ -285,7 +296,7 @@ export function createMcpServer(context: AgentContext) {
       },
       annotations: { readOnlyHint: true },
     },
-    withProject(async (project, { limit }) => json({ commits: await contextRepos.log(project.slug, limit ?? 20) })),
+    withProject("repo_log", async (project, { limit }) => json({ commits: await contextRepos.log(project.slug, limit ?? 20) })),
   );
 
   server.registerTool(
@@ -299,7 +310,7 @@ export function createMcpServer(context: AgentContext) {
       inputSchema: { project: projectArg },
       annotations: { readOnlyHint: true },
     },
-    withProject(async (project) => {
+    withProject("list_skills", async (project) => {
       const [universal, library, specific] = await Promise.all([
         listUniversalSkills(project.ownerId),
         listLinkedLibrarySkills(project.id),
@@ -329,7 +340,7 @@ export function createMcpServer(context: AgentContext) {
       inputSchema: { project: projectArg, slug: z.string().min(1).max(100).describe("Slug da skill") },
       annotations: { readOnlyHint: true },
     },
-    withProject(async (project, { slug }) => {
+    withProject("get_skill", async (project, { slug }) => {
       const skill = await findSkillForProject(project, slug);
       if (!skill) return error("Skill não encontrada.");
 
@@ -358,7 +369,7 @@ export function createMcpServer(context: AgentContext) {
         code_reference: z.string().optional().describe("Commit ou PR do código que motivou a proposta"),
       },
     },
-    withProject(async (project, args) => {
+    withProject("propose_change", async (project, args) => {
       // O esquema descarta o `project` (chaves desconhecidas não passam).
       const parsed = proposeChangeSchema.safeParse(args);
       if (!parsed.success) return error(z.prettifyError(parsed.error));
@@ -376,7 +387,7 @@ export function createMcpServer(context: AgentContext) {
       inputSchema: { project: projectArg, id: z.uuid() },
       annotations: { readOnlyHint: true },
     },
-    withProject(async (project, { id }) => {
+    withProject("get_change", async (project, { id }) => {
       const [proposal] = await db
         .select({
           id: changeProposals.id,

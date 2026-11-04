@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MCP_SERVER_NAME } from "@/lib/agent/instructions";
 
+import { AccessKeyCard, type AccessKey } from "./access-key-card";
 import { AgentsInstructions } from "./agents-instructions";
 import { InstallSnippets } from "./install-snippets";
 
@@ -16,12 +17,15 @@ type McpSetupProps = {
   endpoint: string;
   /** Conteúdo renderizado no servidor, encaixado nas abas. */
   projectList: React.ReactNode;
-  accessKey: React.ReactNode;
   tools: React.ReactNode;
+  access: { key: AccessKey | null; activeCount: number; legacyCount: number };
 };
 
 /** Abas da página MCP: projetos acessíveis, instalação (chave única) e instruções do AGENTS.md. */
-export function McpSetup({ projects, endpoint, projectList, accessKey, tools }: McpSetupProps) {
+export function McpSetup({ projects, endpoint, projectList, tools, access }: McpSetupProps) {
+  // Compartilhado entre o card da chave e os comandos: mostrar a chave revela nos dois.
+  const [revealed, setRevealed] = useState(false);
+  const token = access.key?.token ?? null;
   // O AGENTS.md é o que diz ao agente qual projeto usar: um texto por projeto.
   const [instructionsId, setInstructionsId] = useState(projects[0]?.id ?? "");
   const instructionsProject = projects.find((item) => item.id === instructionsId) ?? null;
@@ -52,17 +56,32 @@ export function McpSetup({ projects, endpoint, projectList, accessKey, tools }: 
       </TabsContent>
 
       <TabsContent value="install" className="space-y-4 pt-2">
-        {accessKey}
+        <AccessKeyCard
+          current={access.key}
+          activeCount={access.activeCount}
+          legacyCount={access.legacyCount}
+          revealed={revealed}
+          onRevealedChange={setRevealed}
+        />
         <Card>
           <CardHeader>
             <CardTitle>Instalação</CardTitle>
             <CardDescription>
-              Uma vez por máquina. Substitua <code className="font-mono">&lt;SUA_CHAVE&gt;</code> pela chave de acesso;
-              ao gerar uma chave, os mesmos comandos aparecem já preenchidos.
+              {token ? (
+                <>
+                  Uma vez por máquina. Os comandos já usam a sua chave de acesso: na tela ela aparece mascarada, mas o
+                  botão Copiar leva o valor completo.
+                </>
+              ) : (
+                <>
+                  Uma vez por máquina. Gere a chave de acesso acima para os comandos virem preenchidos; até lá, troque{" "}
+                  <code className="font-mono">&lt;SUA_CHAVE&gt;</code> por ela.
+                </>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <InstallSnippets endpoint={endpoint} />
+            <InstallSnippets endpoint={endpoint} token={token} revealed={revealed} />
           </CardContent>
         </Card>
         {tools}

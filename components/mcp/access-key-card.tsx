@@ -1,34 +1,40 @@
 "use client";
 
-import { BanIcon, KeyRoundIcon, Loader2Icon } from "lucide-react";
+import { BanIcon, EyeIcon, EyeOffIcon, KeyRoundIcon, Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { generateAccessKey, revokeAllTokens } from "@/lib/agent/actions";
+import { maskToken } from "@/lib/agent/instructions";
 import { formatDateTime } from "@/lib/format";
 
 import { CopyButton } from "./copy-button";
-import { InstallSnippets } from "./install-snippets";
+
+export type AccessKey = {
+  prefix: string;
+  createdAt: Date;
+  lastUsedAt: Date | null;
+  /** Valor em claro; null nas chaves geradas antes de serem guardadas cifradas. */
+  token: string | null;
+};
 
 type AccessKeyCardProps = {
-  endpoint: string;
-  /** Chave vigente (só metadados; o valor em claro nunca é guardado). */
-  current: { prefix: string; createdAt: Date; lastUsedAt: Date | null } | null;
+  current: AccessKey | null;
   /** Tokens ainda ativos, inclusive os de projeto do modelo antigo. */
   activeCount: number;
   legacyCount: number;
+  revealed: boolean;
+  onRevealedChange: (revealed: boolean) => void;
 };
 
-/** Chave única do MCP: gerar (revoga as anteriores e exibe uma vez) e revogar todos os tokens. */
-export function AccessKeyCard({ endpoint, current, activeCount, legacyCount }: AccessKeyCardProps) {
+/** Chave única do MCP: ver e copiar a atual, gerar outra (revoga as anteriores) e revogar todos os tokens. */
+export function AccessKeyCard({ current, activeCount, legacyCount, revealed, onRevealedChange }: AccessKeyCardProps) {
   const router = useRouter();
   const [generating, startGenerate] = useTransition();
   const [revoking, startRevoke] = useTransition();
-  const [created, setCreated] = useState<string | null>(null);
 
   function onGenerate() {
     if (current && !window.confirm("Gerar uma chave nova? A atual deixa de funcionar nos agentes que a usam.")) return;
@@ -39,7 +45,9 @@ export function AccessKeyCard({ endpoint, current, activeCount, legacyCount }: A
         toast.error(result.error);
         return;
       }
-      setCreated(result.data.token);
+      toast.success("Chave gerada: os comandos de instalação já usam a nova");
+      onRevealedChange(true);
+      router.refresh();
     });
   }
 
@@ -55,16 +63,12 @@ export function AccessKeyCard({ endpoint, current, activeCount, legacyCount }: A
         return;
       }
       toast.success(`${result.data.revoked} token(s) revogado(s)`);
+      onRevealedChange(false);
       router.refresh();
     });
   }
 
-  function onClose(open: boolean) {
-    if (open) return;
-    // Fecha o fluxo: a chave em claro nunca mais fica disponível.
-    setCreated(null);
-    router.refresh();
-  }
+  const token = current?.token ?? null;
 
   return (
     <Card>
@@ -75,6 +79,31 @@ export function AccessKeyCard({ endpoint, current, activeCount, legacyCount }: A
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {token ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-lg border bg-muted/50 px-3 py-2 font-mono text-xs">
+              {revealed ? token : maskToken(token)}
+            </code>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onRevealedChange(!revealed)}
+              aria-pressed={revealed}
+            >
+              {revealed ? <EyeOffIcon /> : <EyeIcon />}
+              {revealed ? "Ocultar" : "Mostrar"}
+            </Button>
+            <CopyButton value={token} />
+          </div>
+        ) : (
+          current && (
+            <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+              Esta chave foi gerada antes de o DevBrain guardá-la para exibir de novo. Gere uma nova para vê-la e
+              copiá-la aqui sempre que precisar.
+            </p>
+          )
+        )}
+
         <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
           <dt className="text-muted-foreground">Chave atual</dt>
           <dd className="font-mono">{current ? `${current.prefix}…` : "Nenhuma"}</dd>
@@ -109,29 +138,6 @@ export function AccessKeyCard({ endpoint, current, activeCount, legacyCount }: A
           </Button>
         </div>
       </CardContent>
-
-      <Dialog open={created !== null} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Chave de acesso gerada</DialogTitle>
-            <DialogDescription>Copie agora: por segurança, ela não será exibida novamente.</DialogDescription>
-          </DialogHeader>
-          {created && (
-            <>
-              <div className="flex items-center gap-2">
-                <code className="min-w-0 flex-1 truncate rounded-lg border bg-muted/50 px-3 py-2 font-mono text-xs">
-                  {created}
-                </code>
-                <CopyButton value={created} />
-              </div>
-              <section className="min-w-0 space-y-3">
-                <h3 className="text-sm font-semibold">Instale o MCP (uma vez por máquina)</h3>
-                <InstallSnippets endpoint={endpoint} token={created} />
-              </section>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }

@@ -12,6 +12,7 @@ import { ImportSkillsDialog } from "@/components/skills/import-skills-dialog";
 import { SkillDialog } from "@/components/skills/skill-dialog";
 import { SkillList } from "@/components/skills/skill-list";
 import { ProposalTable } from "@/components/projects/proposal-table";
+import { ContextSavings, ContextSavingsFallback } from "@/components/usage/context-savings";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -90,6 +91,11 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
               Não foi possível acessar o repositório git deste projeto. Verifique o volume em CONTEXT_REPOS_DIR.
             </p>
           )}
+          <div className="mt-4">
+            <Suspense fallback={<ContextSavingsFallback />}>
+              <ContextSavings ownerId={user.id} projectId={project.id} />
+            </Suspense>
+          </div>
         </TabsContent>
 
         <TabsContent value="files" className="pt-4">

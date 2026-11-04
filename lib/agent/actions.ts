@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/auth/dal";
 
 import { issueAccessKey, revokeAllAgentTokens } from "./issue";
 
-/** Gera a chave de acesso do MCP, revogando as anteriores. O valor em claro só aparece aqui. */
+/** Gera a chave de acesso do MCP, revogando as anteriores. O painel passa a exibi-la (cifrada no banco). */
 export async function generateAccessKey(): Promise<ActionResult<{ token: string; prefix: string }>> {
   const user = await getCurrentUser();
 

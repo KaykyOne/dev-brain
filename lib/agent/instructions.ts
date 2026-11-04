@@ -6,6 +6,9 @@ export const MCP_SERVER_NAME = "devbrain";
 /** Variável de ambiente que guarda a chave de acesso (Codex e `.mcp.json`). */
 export const TOKEN_ENV_VAR = "DEVBRAIN_TOKEN";
 
+/** Chave mascarada para exibir na tela (o botão Copiar leva o valor completo). */
+export const maskToken = (token: string) => `${token.slice(0, 8)}${"•".repeat(16)}`;
+
 export const instructionsFileName = (slug: string) => `devbrain-${slug}-AGENTS.md`;
 
 /** O nome entra em um título Markdown: sem quebras de linha nem marcadores que mudem a estrutura. */

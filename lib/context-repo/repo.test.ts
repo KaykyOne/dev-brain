@@ -13,6 +13,7 @@ import {
   repoDir,
   repoHistory,
   repoLog,
+  repoTextChars,
   writeRepoFile,
 } from "./repo";
 
@@ -161,5 +162,17 @@ describe("histórico e atividade", () => {
     const history = await repoHistory(dir, 300);
     expect(history.length).toBe((await repoLog(dir, 100)).length);
     expect(await repoCommitDates(dir, 30)).toHaveLength(history.length);
+  });
+});
+
+describe("repoTextChars", () => {
+  it("soma os caracteres dos arquivos de texto versionados", async () => {
+    const files = await listFiles(dir);
+    const textFiles = files.filter((file) => /\.(md|json)$/.test(file));
+    let expected = 0;
+    for (const file of textFiles) expected += (await readFile(join(dir, file), "utf8")).length;
+
+    expect(expected).toBeGreaterThan(0);
+    expect(await repoTextChars(dir)).toBe(expected);
   });
 });

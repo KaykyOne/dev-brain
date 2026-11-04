@@ -1,4 +1,7 @@
-/** Configuração do provedor de IA, resolvida a partir das variáveis de ambiente (puro, sem acesso a segredos do cliente). */
+/**
+ * Configuração do provedor de IA (puro, sem acesso a segredos do cliente). A entrada vem de Configurações
+ * (tabela ai_settings) ou, enquanto nada foi salvo lá, das variáveis de ambiente.
+ */
 
 export type AiEnv = {
   AI_PROVIDER: "deepseek" | "openai" | "openrouter" | "custom";
@@ -11,8 +14,15 @@ export type AiEnv = {
 
 type Preset = { baseUrl?: string; model?: string };
 
+export const AI_PROVIDERS = {
+  deepseek: "DeepSeek",
+  openai: "OpenAI",
+  openrouter: "OpenRouter",
+  custom: "Outro (compatível com a API da OpenAI)",
+} as const satisfies Record<AiEnv["AI_PROVIDER"], string>;
+
 /** Todos falam a API de chat completions da OpenAI. Só o DeepSeek tem modelo padrão. */
-const PRESETS: Record<AiEnv["AI_PROVIDER"], Preset> = {
+export const PRESETS: Record<AiEnv["AI_PROVIDER"], Preset> = {
   deepseek: { baseUrl: "https://api.deepseek.com", model: "deepseek-flash" },
   openai: { baseUrl: "https://api.openai.com/v1" },
   openrouter: { baseUrl: "https://openrouter.ai/api/v1" },
@@ -36,13 +46,13 @@ export function resolveAiConfig(env: AiEnv): AiConfig {
   const provider = env.AI_PROVIDER;
   const preset = PRESETS[provider];
 
-  if (!env.AI_API_KEY) return { enabled: false, provider, reason: "Defina AI_API_KEY para ativar o assistente." };
+  if (!env.AI_API_KEY) return { enabled: false, provider, reason: "Informe a chave de API em Configurações para ativar o assistente." };
 
   const model = env.AI_MODEL ?? preset.model;
-  if (!model) return { enabled: false, provider, reason: `Defina AI_MODEL: o provedor "${provider}" não tem modelo padrão.` };
+  if (!model) return { enabled: false, provider, reason: `Informe o modelo em Configurações: o provedor "${provider}" não tem modelo padrão.` };
 
   const baseUrl = (env.AI_BASE_URL ?? preset.baseUrl)?.replace(/\/+$/, "");
-  if (!baseUrl) return { enabled: false, provider, reason: 'Defina AI_BASE_URL para AI_PROVIDER="custom".' };
+  if (!baseUrl) return { enabled: false, provider, reason: "Informe a URL da API em Configurações para o provedor personalizado." };
 
   return {
     enabled: true,

@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { validateSession } from "@/lib/auth/session";
-import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { toolDefinitions } from "@/lib/assistant/actions";
 import { runAssistant, type AgentDeps } from "@/lib/assistant/agent";
-import { resolveAiConfig } from "@/lib/assistant/config";
+import { loadAiConfig } from "@/lib/assistant/settings";
 import { HANDLERS } from "@/lib/assistant/handlers";
 import { LlmError, streamChat } from "@/lib/assistant/llm";
 import { buildSystemPrompt } from "@/lib/assistant/prompt";
@@ -23,7 +22,7 @@ export async function POST(request: Request) {
   const user = await validateSession();
   if (!user) return problem(401, "Sessão expirada. Entre novamente.");
 
-  const config = resolveAiConfig(env);
+  const config = await loadAiConfig(user.id);
   if (!config.enabled) return problem(503, config.reason);
 
   if (!checkRate(user.id).allowed) return problem(429, "Muitas mensagens em pouco tempo. Aguarde um instante.");

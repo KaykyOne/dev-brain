@@ -1,9 +1,11 @@
 import { ActivityIcon, FileTextIcon, FolderGitIcon, GitCommitHorizontalIcon, GitPullRequestIcon, SparklesIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { CommitChart } from "@/components/shared/commit-chart-lazy";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ContextSavings, ContextSavingsFallback } from "@/components/usage/context-savings";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ACTIVITY_LABELS, type ActivityAction } from "@/lib/activity";
@@ -41,6 +43,11 @@ export default async function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      {/* Mede o contexto inteiro dos projetos usados (lê os repositórios): carrega em streaming. */}
+      <Suspense fallback={<ContextSavingsFallback />}>
+        <ContextSavings ownerId={user.id} projects={data.projectList} />
+      </Suspense>
 
       <Card>
         <CardHeader>

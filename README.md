@@ -117,8 +117,9 @@ no dashboard. Ative ou desative o acesso do MCP com um clique.
 <td width="50%" valign="top">
 
 ### 🔌 Um MCP para tudo
-Servidor Streamable HTTP com uma única chave de acesso, da qual só o hash é guardado. Gerar uma chave nova revoga a
-anterior, e **Revogar todos os tokens** derruba todo acesso de uma vez.
+Servidor Streamable HTTP com uma única chave de acesso, que você vê e copia no painel quando quiser, com os comandos do
+Claude Code e do Codex já preenchidos. Gerar uma chave nova revoga a anterior, e **Revogar todos os tokens** derruba
+todo acesso de uma vez.
 
 </td>
 </tr>
@@ -193,7 +194,7 @@ o conteúdo com cara de segredo é recusado.
 ### Com Docker (recomendado)
 
 ```bash
-cp .env.example .env     # ajuste APP_URL, ADMIN_* e, se quiser o assistente, AI_API_KEY
+cp .env.example .env     # ajuste APP_URL e ADMIN_* (o assistente de IA se configura no painel)
 npm run up               # builda e sobe Postgres, migrations e app em http://localhost:3000
 npm run logs             # acompanha os logs do app
 npm run down             # derruba (os volumes do banco e dos repositórios são mantidos)
@@ -201,6 +202,11 @@ npm run down             # derruba (os volumes do banco e dos repositórios são
 
 São três serviços: `db` (Postgres 17), `migrate` (aplica as migrations e encerra) e `app` (Next.js standalone, que só
 sobe depois das migrations). Os repositórios de contexto ficam no volume `contextrepos`, então **faça backup dele**.
+
+> [!IMPORTANT]
+> A chave de acesso fica no banco **cifrada** (AES-256-GCM); a autenticação usa só o hash. A chave que cifra vem de
+> `TOKEN_ENCRYPTION_KEY` (`openssl rand -base64 32`) ou, sem ela, é gerada em `.secrets/token.key` dentro do volume
+> `contextrepos`. Se ela se perder, o painel não consegue mais exibir a chave atual: gere uma nova.
 
 ### Desenvolvimento
 
@@ -232,17 +238,13 @@ senha em **Perfil**.
 
 <br/>
 
-Vem pré-configurado para o **DeepSeek Flash**: basta definir `AI_API_KEY`. Sem a chave, o assistente fica desativado e o
-chat explica o que falta.
+Configure em **Configurações → Assistente de IA**: provedor (DeepSeek, OpenAI, OpenRouter ou qualquer API compatível
+com a da OpenAI), chave de API, modelo, URL, modo de raciocínio e máximo de passos. Vem pronto para o **DeepSeek
+Flash**, e basta colar a chave. Ela fica cifrada no banco e nunca vai para o navegador; a tela mostra só o final dela.
 
-| Variável | Padrão | |
-|---|---|---|
-| `AI_API_KEY` | _(vazia)_ | Chave do provedor. Nunca vai para o navegador. |
-| `AI_PROVIDER` | `deepseek` | `deepseek`, `openai`, `openrouter` ou `custom` (qualquer API compatível com a da OpenAI) |
-| `AI_MODEL` | `deepseek-flash` | Obrigatório fora do DeepSeek |
-| `AI_BASE_URL` | do provedor | Só para `custom`, ou para sobrescrever a URL |
-| `AI_THINKING` | `disabled` | `enabled` liga o raciocínio do DeepSeek (mais lento e caro) |
-| `AI_MAX_STEPS` | `12` | Rodadas de ferramentas por mensagem |
+Enquanto nada for salvo nessa página, valem as variáveis `AI_*` do `.env` (`AI_API_KEY`, `AI_PROVIDER`, `AI_MODEL`,
+`AI_BASE_URL`, `AI_THINKING`, `AI_MAX_STEPS`). No primeiro salvamento, a chave do `.env` é trazida para a página se o
+campo ficar vazio, e daí em diante o `.env` deixa de ser usado.
 
 O que o assistente pode fazer está em `lib/assistant/actions.json`. Cada ação tem `enabled`, `confirm` (exige aprovação
 no chat) e `mutates`, e toda remoção tem `confirm: true` (um teste garante). Para adicionar uma ação, descreva-a no

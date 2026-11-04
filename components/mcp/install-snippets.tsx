@@ -2,16 +2,17 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { MCP_SERVER_NAME, TOKEN_ENV_VAR } from "@/lib/agent/instructions";
+import { maskToken, MCP_SERVER_NAME, TOKEN_ENV_VAR } from "@/lib/agent/instructions";
 
 import { CopyButton } from "./copy-button";
 
-function Snippet({ title, hint, code }: { title: string; hint?: string; code: string }) {
+/** `code` é o que aparece (com a chave mascarada); `copy`, o que vai para a área de transferência. */
+function Snippet({ title, hint, code, copy = code }: { title: string; hint?: string; code: string; copy?: string }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">{title}</p>
-        <CopyButton value={code} />
+        <CopyButton value={copy} />
       </div>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       <pre className="overflow-x-auto rounded-lg border bg-muted/50 p-3 font-mono text-xs leading-relaxed">
@@ -23,18 +24,22 @@ function Snippet({ title, hint, code }: { title: string; hint?: string; code: st
 
 type InstallSnippetsProps = {
   endpoint: string;
-  /** Chave recém-gerada; sem ela os comandos mostram um marcador. */
-  token?: string;
+  /** Chave atual; sem ela os comandos mostram um marcador. */
+  token?: string | null;
+  /** Mostra a chave por inteiro nos comandos, em vez de mascarada. */
+  revealed?: boolean;
 };
 
-/** Comandos para instalar o MCP único: uma vez por máquina, vale para todos os projetos. */
-export function InstallSnippets({ endpoint, token }: InstallSnippetsProps) {
+/** Comandos para instalar o MCP único, já com a chave: uma vez por máquina, vale para todos os projetos. */
+export function InstallSnippets({ endpoint, token, revealed = false }: InstallSnippetsProps) {
   const value = token ?? "<SUA_CHAVE>";
+  const shown = token && !revealed ? maskToken(token) : value;
   const server = MCP_SERVER_NAME;
   const tokenVar = TOKEN_ENV_VAR;
 
   // Escopo de usuário: o mesmo servidor atende todas as pastas; o projeto vem do AGENTS.md de cada uma.
-  const claudeCommand = `claude mcp add --transport http --scope user ${server} ${endpoint} \\\n  --header "Authorization: Bearer ${value}"`;
+  const claudeCommand = (key: string) =>
+    `claude mcp add --transport http --scope user ${server} ${endpoint} \\\n  --header "Authorization: Bearer ${key}"`;
 
   const mcpJson = JSON.stringify(
     { mcpServers: { [server]: { type: "http", url: endpoint, headers: { Authorization: `Bearer \${${tokenVar}}` } } } },
@@ -42,7 +47,7 @@ export function InstallSnippets({ endpoint, token }: InstallSnippetsProps) {
     2,
   );
 
-  const codexEnv = `export ${tokenVar}="${value}"`;
+  const codexEnv = (key: string) => `export ${tokenVar}="${key}"`;
   const codexCommand = `codex mcp add ${server} --url ${endpoint} \\\n  --bearer-token-env-var ${tokenVar}`;
   const codexConfig = `[mcp_servers.${server}]\nurl = "${endpoint}"\nbearer_token_env_var = "${tokenVar}"`;
 
@@ -57,7 +62,8 @@ export function InstallSnippets({ endpoint, token }: InstallSnippetsProps) {
         <Snippet
           title="Adicionar o servidor"
           hint="Rode uma vez no terminal: o servidor vale em todas as pastas. Cada projeto de código diz o seu projeto no AGENTS.md."
-          code={claudeCommand}
+          code={claudeCommand(shown)}
+          copy={claudeCommand(value)}
         />
         <Snippet
           title="Ou pelo .mcp.json"
@@ -71,7 +77,8 @@ export function InstallSnippets({ endpoint, token }: InstallSnippetsProps) {
         <Snippet
           title="Exporte a chave"
           hint="O Codex lê a chave desta variável de ambiente: ele não fica no arquivo. Adicione ao ~/.bashrc ou ~/.zshrc para persistir."
-          code={codexEnv}
+          code={codexEnv(shown)}
+          copy={codexEnv(value)}
         />
         <Snippet
           title="Adicionar o servidor"

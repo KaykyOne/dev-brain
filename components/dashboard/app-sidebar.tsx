@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderGitIcon, LayoutDashboardIcon, PlugIcon, ScrollTextIcon, SparklesIcon } from "lucide-react";
+import { FolderGitIcon, LayoutDashboardIcon, PlugIcon, ScrollTextIcon, Settings2Icon, SparklesIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -26,6 +26,7 @@ const navItems = [
   { title: "Skills", href: "/skills", icon: SparklesIcon },
   { title: "MCP", href: "/mcp", icon: PlugIcon },
   { title: "Logs", href: "/logs", icon: ScrollTextIcon },
+  { title: "Configurações", href: "/settings", icon: Settings2Icon },
 ];
 
 export function AppSidebar({ user }: UserMenuProps) {

@@ -37,3 +37,11 @@ export function formatRelative(value: Date | string, now = new Date()): string {
   }
   return "agora";
 }
+
+const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
+
+/** Quantidade de tokens resumida: "850", "12,3 mil", "1,2 mi". */
+export const formatTokens = (value: number) => compact.format(value);
+
+const percent = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 0 });
+export const formatPercent = (ratio: number) => percent.format(ratio);

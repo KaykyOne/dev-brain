@@ -8,7 +8,7 @@ describe("resolveAiConfig", () => {
   it("fica desativado sem chave, com instrução clara", () => {
     const config = resolveAiConfig(base);
     expect(config.enabled).toBe(false);
-    expect(config.enabled === false && config.reason).toContain("AI_API_KEY");
+    expect(config.enabled === false && config.reason).toContain("chave de API");
   });
 
   it("vem pré-configurado para o DeepSeek Flash: só falta a chave", () => {
