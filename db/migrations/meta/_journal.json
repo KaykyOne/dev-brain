@@ -92,6 +92,20 @@
       "when": 1793793484118,
       "tag": "0012_ai_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794143312327,
+      "tag": "0013_agent_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794156609272,
+      "tag": "0014_agent_task_models_chat",
+      "breakpoints": true
     }
   ]
 }
