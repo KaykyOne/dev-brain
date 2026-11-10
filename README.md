@@ -22,6 +22,7 @@ entregues ao **Claude Code**, ao **Codex** e a qualquer agente compatível por *
 [Como funciona](#-como-funciona) ·
 [Em 3 passos](#-em-3-passos) ·
 [Recursos](#-recursos) ·
+[Tarefas para agentes](#-tarefas-para-agentes) ·
 [Rodando](#-rodando) ·
 [Ferramentas MCP](#-ferramentas-mcp)
 
@@ -159,7 +160,7 @@ no projeto, e você é notificado.
 <td valign="top">
 
 ### 🔔 Notificações
-Avisos de propostas novas e de agentes tentando usar projetos desativados.
+Avisos de propostas novas, de agentes tentando usar projetos desativados e de tarefas concluídas ou com falha.
 
 </td>
 <td valign="top">
@@ -167,6 +168,22 @@ Avisos de propostas novas e de agentes tentando usar projetos desativados.
 ### 🪵 Logs
 Erros e eventos do servidor (inclusive cada ferramenta MCP chamada) ficam persistidos e filtráveis no painel. Tokens e
 senhas são redigidos antes de gravar.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 🧑‍💻 Tarefas para agentes
+Uma **fila** de tarefas para o Claude Code e o Codex, com anexos, modelo de planejamento e de execução, e conversa que
+continua. Cadastre pela página **Tarefas** e acompanhe o log ao vivo.
+
+</td>
+<td valign="top">
+
+### 🧩 Extensão do VS Code
+A **Agent Tasks** pega a próxima tarefa da fila, executa numa branch isolada na sua máquina e reporta o resultado. A
+configuração vem do MCP que você já tem.
 
 </td>
 </tr>
@@ -188,6 +205,75 @@ senhas são redigidos antes de gravar.
 
 Todas, exceto `list_projects` e `create_project`, recebem `project` (o slug). Nunca há push: o repositório é local, e
 o conteúdo com cara de segredo é recusado.
+
+## 🧑‍💻 Tarefas para agentes
+
+O DevBrain guarda a **fila de tarefas** dos seus agentes de código. Quem executa é a extensão
+**Agent Tasks** do VS Code, na sua máquina: o servidor não roda agente nenhum, só coordena.
+
+```mermaid
+sequenceDiagram
+    actor U as Você
+    participant D as DevBrain
+    participant E as Extensão Agent Tasks
+    participant A as Claude Code / Codex
+
+    U->>D: cadastra a tarefa na página Tarefas
+    E->>D: POST /api/tasks/claim
+    D-->>E: próxima da fila (atômico)
+    E->>A: planeja e executa numa branch isolada
+    loop enquanto executa
+        E->>D: PATCH /api/tasks/:id (sinal de vida, log)
+    end
+    E->>D: PATCH /api/tasks/:id (resultado, sessão)
+    D-->>U: 🔔 notificação no sino
+    U->>D: continua a conversa
+    E->>A: retoma a mesma sessão
+```
+
+A página **Tarefas** tem os filtros **Pendentes**, **Ativas** e **Concluídas**, o formulário de nova tarefa (projeto,
+agente, modelos, "planejar antes", branch e anexos por arrastar, colar print ou escolher arquivo) e, no detalhe de cada
+tarefa, a conversa, o log ao vivo e as ações de cancelar, reordenar, editar, rodar de novo e excluir.
+
+**Garantias do servidor**
+
+- O *claim* da próxima tarefa é atômico (`FOR UPDATE SKIP LOCKED`): duas máquinas nunca pegam a mesma.
+- Duas tarefas da mesma branch no mesmo projeto não rodam ao mesmo tempo.
+- Uma continuação de conversa só é entregue à **máquina que tem a sessão** do agente.
+- Sem sinal de vida por **2 minutos**, a tarefa em execução vira falha, e você é avisado no sino.
+- Anexos: até 10 arquivos, 10 MB cada e 25 MB por tarefa, guardados no PostgreSQL. Só imagens raster abrem inline; o
+  resto sempre baixa.
+
+### API
+
+Autenticação: a **chave de acesso do MCP** (`Authorization: Bearer dvb_...`), usada pela extensão, ou o cookie de sessão
+do painel, e nesse caso as escritas só valem para a mesma origem.
+
+| Rota | O que faz |
+|---|---|
+| `GET /api/tasks?projects=a,b` | Lista as tarefas (filtra pelos slugs) |
+| `POST /api/tasks` | Cadastra uma tarefa (`multipart/form-data` com anexos em `attachments`, ou JSON com `data` em base64) |
+| `DELETE /api/tasks?projects=a,b` | Remove as concluídas e canceladas |
+| `GET /api/tasks/projects` | Projetos da conta, para a extensão validar a conexão |
+| `POST /api/tasks/claim` | Reivindica a próxima tarefa dos projetos abertos na máquina |
+| `GET /api/tasks/:id` | Detalhe, com log, plano e conversa |
+| `PATCH /api/tasks/:id` | Progresso do executor: sinal de vida, log, plano, sessão e resultado |
+| `POST /api/tasks/:id` | Comandos do usuário: `cancel`, `retry`, `up`, `down` |
+| `PUT /api/tasks/:id` | Edita uma tarefa com erro ou cancelada (não a coloca na fila) |
+| `DELETE /api/tasks/:id` | Exclui a tarefa (menos se estiver em execução) |
+| `POST /api/tasks/:id/messages` | Continua a conversa: a tarefa volta à fila na máquina da sessão |
+| `GET /api/tasks/:id/attachments/:attachmentId` | Baixa um anexo |
+
+Tabelas: `agent_tasks`, `agent_task_attachments` e `agent_task_messages` (migrations `0013` e `0014`, aplicadas sozinhas
+quando o servidor sobe).
+
+### Usando
+
+1. Faça o deploy normalmente: as migrations rodam na subida.
+2. Instale a extensão (o README dela tem o passo a passo) e rode **Agent Tasks: Conectar ao DevBrain**. A
+   URL e a chave vêm preenchidas do MCP que você já configurou.
+3. Abra no VS Code a pasta de um projeto com o trecho `Projeto no DevBrain: ...` no `AGENTS.md`, e cadastre tarefas pela
+   extensão ou pela página **Tarefas**.
 
 ## 🛠️ Rodando
 
@@ -307,12 +393,13 @@ Registros com mais de 30 dias são apagados na subida. Tudo também sai no stdou
 Drizzle ORM + PostgreSQL · MCP SDK · Zod · Vitest · Docker.
 
 ```
-app/                  rotas (App Router) e route handlers: /api/mcp, /api/assistant, /api/auth/*
-components/           UI (shadcn/ui), editor Markdown, assistente, skills, MCP
+app/                  rotas (App Router) e route handlers: /api/mcp, /api/assistant, /api/tasks, /api/auth/*
+components/           UI (shadcn/ui), editor Markdown, assistente, skills, MCP, tarefas
 lib/
 ├── agent/            servidor MCP, chave de acesso, instruções do AGENTS.md
 ├── context-repo/     operações git nos repositórios de contexto (com lock por repositório)
 ├── skills/           skills, escopos e busca
+├── tasks/            fila de tarefas dos agentes: claim, progresso, conversa e anexos
 ├── assistant/        assistente de IA: ações, esquemas, handlers e streaming
 ├── auth/             scrypt + sessões no banco; validação no DAL
 └── env.ts            variáveis de ambiente validadas com Zod
@@ -326,6 +413,7 @@ proxy.ts              redirecionamento otimista para o login
 - [x] Fundação e projetos
 - [x] Editor Markdown e skills
 - [x] API para agentes (MCP)
+- [x] Fila de tarefas para agentes, com a extensão do VS Code
 - [ ] Integração com o GitHub
 - [ ] Sincronização e PRs
 
