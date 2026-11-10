@@ -5,9 +5,9 @@ import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { publicStatus, resolveAiConfig } from "@/lib/assistant/config";
+import { publicStatus } from "@/lib/assistant/config";
+import { loadAiConfig } from "@/lib/assistant/settings";
 import { getCurrentUser } from "@/lib/auth/dal";
-import { env } from "@/lib/env";
 import { listNotifications } from "@/lib/notifications-actions";
 
 import { AppSidebar } from "./app-sidebar";
@@ -19,7 +19,7 @@ async function Notifications() {
 export async function DashboardShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   // Só o estado público: a chave de API nunca chega ao navegador.
-  const assistant = publicStatus(resolveAiConfig(env));
+  const assistant = publicStatus(await loadAiConfig(user.id));
 
   return (
     <SidebarProvider>

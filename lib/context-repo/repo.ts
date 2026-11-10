@@ -154,6 +154,23 @@ export async function listFiles(dir: string): Promise<string[]> {
   return output.split("\0").filter(Boolean).sort();
 }
 
+/** Soma dos caracteres dos arquivos de texto versionados: o tamanho do contexto se fosse carregado inteiro. */
+export async function repoTextChars(dir: string): Promise<number> {
+  let total = 0;
+  for (const file of await listFiles(dir)) {
+    if (!TEXT_EXTENSIONS.has(extname(file))) continue;
+    const absolute = join(dir, file);
+    try {
+      const info = await lstat(absolute);
+      if (!info.isFile() || info.size > MAX_FILE_BYTES) continue;
+      total += (await readFile(absolute, "utf8")).length;
+    } catch {
+      // Arquivo removido entre o ls-files e a leitura: não entra na conta.
+    }
+  }
+  return total;
+}
+
 export async function readRepoFile(dir: string, input: string): Promise<{ path: string; content: string }> {
   const { path, absolute } = await resolveInRepo(dir, input);
 

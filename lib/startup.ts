@@ -7,6 +7,7 @@ import { ensureAdminUser } from "@/lib/auth/bootstrap";
 import { checkContextRepos } from "@/lib/context-repo/health";
 import { basePath, env } from "@/lib/env";
 import { logger, pruneLogs } from "@/lib/logger";
+import { pruneUsage } from "@/lib/usage";
 
 /** Tarefas executadas uma vez quando o servidor sobe (a primeira aplica as migrations pendentes). Falhas são registradas, nunca derrubam o servidor. */
 export async function startup() {
@@ -32,6 +33,7 @@ export async function startup() {
   }
 
   await pruneLogs().catch((error) => logger.warn("startup", "Falha ao limpar logs antigos", { error }));
+  await pruneUsage().catch((error) => logger.warn("startup", "Falha ao limpar o uso antigo do MCP", { error }));
 
   await logger.info("startup", "Servidor iniciado", {
     details: { nodeEnv: env.NODE_ENV, appUrl: env.APP_URL, basePath, contextReposDir: dir, repositoriosOk: problems.length === 0 },

@@ -71,6 +71,41 @@
       "when": 1792436100000,
       "tag": "0009_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793276253129,
+      "tag": "0010_mcp_usage",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793790495695,
+      "tag": "0011_agent_token_ciphertext",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793793484118,
+      "tag": "0012_ai_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794143312327,
+      "tag": "0013_agent_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794156609272,
+      "tag": "0014_agent_task_models_chat",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { AccessKeyCard } from "@/components/mcp/access-key-card";
 import { CopyButton } from "@/components/mcp/copy-button";
 import { McpProjects } from "@/components/mcp/mcp-projects";
 import { McpSetup } from "@/components/mcp/mcp-setup";
@@ -44,14 +43,7 @@ export default async function McpPage() {
         projects={projects}
         endpoint={endpoint}
         projectList={<McpProjects projects={projects} />}
-        accessKey={
-          <AccessKeyCard
-            endpoint={endpoint}
-            current={access.key}
-            activeCount={access.activeCount}
-            legacyCount={access.legacyCount}
-          />
-        }
+        access={access}
         tools={
           <Card>
             <CardHeader>

@@ -70,6 +70,25 @@ async function cachedCommitDates(slug: string, name: string, description: string
   return contextRepos.commitDates(slug, days);
 }
 
+async function cachedTextChars(slug: string, name: string, description: string, defaultBranch: string) {
+  "use cache";
+  cacheLife(REPO_CACHE);
+  cacheTag(repoTag(slug));
+
+  await ensure({ name, slug, description, defaultBranch });
+  return contextRepos.textChars(slug);
+}
+
+/** Caracteres de texto do repositório de contexto (lê todos os arquivos: só roda depois de uma escrita). */
+export async function getRepoTextChars(project: RepoRef): Promise<number | null> {
+  try {
+    return await cachedTextChars(project.slug, project.name, project.description, project.defaultBranch);
+  } catch (error) {
+    await logger.warn("projects", `Tamanho do contexto indisponível ("${project.slug}")`, { error });
+    return null;
+  }
+}
+
 /** Estado do repositório de um projeto, ou null se o git não estiver acessível. */
 export async function getRepoInfo(project: RepoRef) {
   try {

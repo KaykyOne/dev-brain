@@ -31,8 +31,8 @@ describe("proxy", () => {
     expect(proxy(request("/dashboard", "session=abc")).headers.get("location")).toBeNull();
   });
 
-  it("protege todas as áreas privadas, incluindo /logs", () => {
-    for (const area of ["dashboard", "projects", "skills", "mcp", "profile", "logs"]) {
+  it("protege todas as áreas privadas, incluindo /logs e /settings", () => {
+    for (const area of ["dashboard", "projects", "skills", "mcp", "profile", "logs", "settings"]) {
       expect(config.matcher).toContain(`/${area}/:path*`);
     }
   });

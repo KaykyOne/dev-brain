@@ -17,6 +17,7 @@ import {
   repoHistory,
   repoLog,
   repoSummary,
+  repoTextChars,
   writeRepoFile,
   type TemplateVars,
 } from "./repo";
@@ -50,6 +51,7 @@ export const contextRepos = {
   history: (slug: string, limit?: number) => repoHistory(repoDir(root(), slug), limit),
   commitDates: (slug: string, days: number) => repoCommitDates(repoDir(root(), slug), days),
   summary: (slug: string) => repoSummary(repoDir(root(), slug)),
+  textChars: (slug: string) => repoTextChars(repoDir(root(), slug)),
   archive: async (slug: string) => {
     const target = await archiveRepo(root(), slug);
     invalidate(slug);

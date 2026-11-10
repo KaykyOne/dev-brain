@@ -3,7 +3,9 @@ import {
   bigint,
   boolean,
   check,
+  customType,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -39,6 +41,7 @@ export const contextCategory = pgEnum("context_category", [
 // (project_skill_links). project: pertence a um único projeto.
 export const skillScope = pgEnum("skill_scope", ["universal", "library", "project"]);
 export const logLevel = pgEnum("log_level", ["info", "warn", "error"]);
+export const aiProvider = pgEnum("ai_provider", ["deepseek", "openai", "openrouter", "custom"]);
 export const proposalStatus = pgEnum("proposal_status", [
   "pending",
   "approved",
@@ -46,6 +49,15 @@ export const proposalStatus = pgEnum("proposal_status", [
   "published",
   "conflict",
 ]);
+
+export const taskStatus = pgEnum("task_status", ["queued", "running", "done", "failed", "cancelled"]);
+export const taskAgent = pgEnum("task_agent", ["claude", "codex"]);
+export const taskBranchMode = pgEnum("task_branch_mode", ["new", "existing"]);
+export const taskMessageRole = pgEnum("task_message_role", ["user", "agent", "plan"]);
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "bytea",
+});
 
 export const repositories = pgTable(
   "repositories",
@@ -177,10 +189,13 @@ export const agentTokens = pgTable(
     // Nulo = token de conta (hub): lista e cria projetos, sem acesso ao conteúdo de nenhum deles.
     projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    // Somente o hash é armazenado; o token em claro é exibido uma única vez.
+    // Hash usado na autenticação (o token nunca é comparado em claro).
     tokenHash: text("token_hash").notNull().unique(),
     // Primeiros caracteres do token, só para identificá-lo na interface.
     tokenPrefix: text("token_prefix").notNull(),
+    // Token cifrado (AES-256-GCM, lib/security/encryption), para o painel exibi-lo de novo. Nulo nos tokens antigos
+    // e nos revogados. A autenticação continua só pelo hash.
+    tokenCiphertext: text("token_ciphertext"),
     scopes: text("scopes").array().notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
@@ -258,6 +273,138 @@ export const notifications = pgTable(
   (table) => [index("notifications_owner_created_idx").on(table.ownerId, table.createdAt)],
 );
 
+// Tamanho de cada resposta do MCP, para estimar os tokens entregues e a economia do contexto fatiado.
+// Só o tamanho é guardado, nunca o conteúdo.
+export const mcpUsage = pgTable(
+  "mcp_usage",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Nulo nas ferramentas do hub (list_projects, create_project).
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
+    // Chave que fez a chamada: separa as sessões de agentes diferentes.
+    tokenId: uuid("token_id").references(() => agentTokens.id, { onDelete: "set null" }),
+    tool: text("tool").notNull(),
+    responseChars: integer("response_chars").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("mcp_usage_owner_created_idx").on(table.ownerId, table.createdAt),
+    index("mcp_usage_project_created_idx").on(table.projectId, table.createdAt),
+  ],
+);
+
+// Configuração do assistente de IA da conta, editada em Configurações. Sem linha, vale o .env (valor inicial).
+export const aiSettings = pgTable("ai_settings", {
+  ownerId: uuid("owner_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  provider: aiProvider("provider").notNull().default("deepseek"),
+  // Chave de API cifrada (lib/security/app-secret); nunca vai para o navegador.
+  apiKeyCiphertext: text("api_key_ciphertext"),
+  // Últimos caracteres da chave, só para identificá-la na interface.
+  apiKeyHint: text("api_key_hint"),
+  model: text("model"),
+  baseUrl: text("base_url"),
+  thinking: boolean("thinking").notNull().default(false),
+  maxSteps: integer("max_steps").notNull().default(12),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Tarefas executadas por agentes (Claude Code, Codex) na máquina do usuário, pela extensão Agent Tasks do VS Code.
+// O painel e a extensão cadastram; a extensão reivindica (claim) a próxima da fila, executa e reporta o resultado.
+export const agentTasks = pgTable(
+  "agent_tasks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    prompt: text("prompt").notNull(),
+    agent: taskAgent("agent").notNull().default("claude"),
+    // new: cria a branch (nome em `branch`, ou nulo para a IA sugerir) a partir de `baseBranch`. existing: usa `branch`.
+    branchMode: taskBranchMode("branch_mode").notNull().default("new"),
+    branch: text("branch"),
+    baseBranch: text("base_branch"),
+    // Ordem na fila (menor sai primeiro).
+    position: bigint("position", { mode: "number" }).notNull(),
+    status: taskStatus("status").notNull().default("queued"),
+    // Onde foi cadastrada (ex.: "web", "vscode:notebook").
+    source: text("source").notNull(),
+    // Máquina que está executando (ou executou) a tarefa.
+    runner: text("runner"),
+    // Branch em que o trabalho ficou (pode ter sido renomeada pela IA).
+    resultBranch: text("result_branch"),
+    summary: text("summary"),
+    error: text("error"),
+    // Fim do log da execução, enviado pela extensão durante e ao final.
+    logTail: text("log_tail"),
+    committed: boolean("committed").notNull().default(false),
+    // Modelos (aliases da CLI do agente). Nulo = padrão da CLI.
+    planModel: text("plan_model"),
+    execModel: text("exec_model"),
+    // Antes de executar, o modelo de planejamento gera um plano (sem alterar arquivos).
+    planFirst: boolean("plan_first").notNull().default(false),
+    plan: text("plan"),
+    // Sessão do agente na máquina que executou: permite continuar a conversa (só nela, em `runner`).
+    sessionId: text("session_id"),
+    cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    heartbeatAt: timestamp("heartbeat_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("agent_tasks_project_status_position_idx").on(table.projectId, table.status, table.position),
+    index("agent_tasks_owner_created_idx").on(table.ownerId, table.createdAt),
+  ],
+);
+
+// Arquivos anexados às instruções da tarefa (imagens, logs, specs). Guardados no banco: são poucos e pequenos.
+export const agentTaskAttachments = pgTable(
+  "agent_task_attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => agentTasks.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    mimeType: text("mime_type").notNull(),
+    size: integer("size").notNull(),
+    content: bytea("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("agent_task_attachments_task_idx").on(table.taskId)],
+);
+
+// Conversa da tarefa: o pedido inicial é o próprio `prompt`; aqui ficam o plano, as respostas do agente e as
+// mensagens de continuação do usuário.
+export const agentTaskMessages = pgTable(
+  "agent_task_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => agentTasks.id, { onDelete: "cascade" }),
+    role: taskMessageRole("role").notNull(),
+    content: text("content").notNull(),
+    // Continuação: modelo pedido pelo usuário. Resposta: modelo que respondeu (quando conhecido).
+    model: text("model"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("agent_task_messages_task_created_idx").on(table.taskId, table.createdAt)],
+);
+
+export type AgentTask = typeof agentTasks.$inferSelect;
+export type AgentTaskMessage = typeof agentTaskMessages.$inferSelect;
+export type AgentTaskStatus = (typeof taskStatus.enumValues)[number];
+export type AgentTaskAttachment = typeof agentTaskAttachments.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type AppLog = typeof appLogs.$inferSelect;
 export type Project = typeof projects.$inferSelect;

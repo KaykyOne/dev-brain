@@ -38,6 +38,7 @@ export async function getDashboardData(ownerId: string) {
 
   return {
     projects: ownedProjects.length,
+    projectList: ownedProjects.map(({ id, name, slug }) => ({ id, name, slug })),
     contexts: contextCount,
     skills: skillCount.value,
     pendingChanges: pendingCount.value,

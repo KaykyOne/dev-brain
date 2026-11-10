@@ -18,8 +18,8 @@ const envSchema = z.object({
   ADMIN_INITIAL_PASSWORD: z.string().min(8).default("Senha123?"),
   // Pasta onde ficam os repositórios git de contexto (um por projeto). Em produção, aponte para um volume.
   CONTEXT_REPOS_DIR: z.string().min(1).default("./data/context-repos"),
-  // Assistente de IA (chat no canto da tela). Pré-configurado para o DeepSeek Flash: basta definir AI_API_KEY.
-  // Sem AI_API_KEY o assistente fica desativado. A chave nunca vai para o navegador.
+  // Assistente de IA: valor inicial, usado só enquanto nada for salvo em Configurações (tabela ai_settings).
+  // A chave nunca vai para o navegador.
   AI_PROVIDER: z.enum(["deepseek", "openai", "openrouter", "custom"]).default("deepseek"),
   AI_API_KEY: optional(z.string().min(1)),
   // Padrão por provedor: deepseek-flash. Nos demais, é obrigatório.
@@ -30,6 +30,9 @@ const envSchema = z.object({
   AI_THINKING: z.enum(["enabled", "disabled"]).default("disabled"),
   // Máximo de rodadas de ferramentas por mensagem, para evitar laços.
   AI_MAX_STEPS: z.coerce.number().int().min(1).max(30).default(12),
+  // Chave (32 bytes em base64) que cifra a chave de acesso do MCP no banco, para o painel poder exibi-la de novo.
+  // Opcional: sem ela, uma chave é gerada e guardada em CONTEXT_REPOS_DIR/.secrets/token.key (faça backup do volume).
+  TOKEN_ENCRYPTION_KEY: optional(z.string().min(1)),
   SESSION_COOKIE_NAME: z.string().min(1).default("session"),
   SESSION_MAX_AGE_DAYS: z.coerce.number().int().positive().default(7),
 });

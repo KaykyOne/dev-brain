@@ -26,6 +26,8 @@ export const ACTIVITY_LABELS = {
   "auth.login": "Login realizado",
   "auth.logout": "Logout realizado",
   "auth.password_changed": "Senha alterada",
+  "settings.ai_updated": "Configuração do assistente de IA alterada",
+  "task.created": "Tarefa cadastrada para agente",
 } as const;
 
 export type ActivityAction = keyof typeof ACTIVITY_LABELS;
